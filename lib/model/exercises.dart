@@ -28,6 +28,7 @@ class Exercises {
   final String explanation;
   final String level;
   final String topicRef;
+  final String audioUrl;
 
   Exercises({
     required this.id,
@@ -39,6 +40,7 @@ class Exercises {
     required this.explanation,
     required this.level,
     required this.topicRef,
+    required this.audioUrl,
   });
 
   factory Exercises.fromJson(Map<String, dynamic> json) {
@@ -55,6 +57,7 @@ class Exercises {
       explanation: json['explanation'] ?? '',
       level: json['level'] ?? '',
       topicRef: json['topicRef'] ?? '',
+      audioUrl: json['audioUrl'] ?? '',
     );
   }
 }

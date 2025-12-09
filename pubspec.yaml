@@ -38,6 +38,7 @@ dependencies:
   provider: ^6.0.5
   uuid: ^4.0.0
   flutter_tts: ^4.2.3
+  drop_down_list: ^2.1.0
 
 dev_dependencies:
   flutter_test:

@@ -29,8 +29,8 @@ class TranslateController extends ChangeNotifier {
     'French',
   ];
 
-  // --- Thêm FlutterTts ---
-  final FlutterTts flutterTts = FlutterTts();
+  final FlutterTts flutterTtsInput = FlutterTts();
+  final FlutterTts flutterTtsOutput = FlutterTts();
 
   void _debounceTranslate() {
     if (_debounceTimer?.isActive ?? false) {
@@ -100,40 +100,34 @@ class TranslateController extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Phát âm thanh input
+  Future<void> speakInput() async {
+    String text = inputController.text.trim();
+    if (text.isEmpty) return;
+
+    await flutterTtsInput.setLanguage(code(fromLang));
+    await flutterTtsInput.setPitch(1.0);
+    await flutterTtsInput.setSpeechRate(0.5);
+    await flutterTtsInput.speak(text);
+  }
+
+  // Dừng input
+  Future<void> pauseInp() async {
+    await flutterTtsInput.stop();
+  }
+
+  // Phát output
   Future<void> speakResult() async {
     if (result.isEmpty) return;
 
-    String locale = "en-US";
-    switch (toLang) {
-      case "Vietnamese":
-        locale = "vi-VN";
-        break;
-      case "Japanese":
-        locale = "ja-JP";
-        break;
-      case "Korean":
-        locale = "ko-KR";
-        break;
-      case "Chinese":
-        locale = "zh-CN";
-        break;
-      case "French":
-        locale = "fr-FR";
-        break;
-    }
-
-    await flutterTts.setLanguage(locale);
-    await flutterTts.setPitch(1.0);
-    await flutterTts.setSpeechRate(0.5);
-    await flutterTts.speak(result);
+    await flutterTtsOutput.setLanguage(code(toLang));
+    await flutterTtsOutput.setPitch(1.0);
+    await flutterTtsOutput.setSpeechRate(0.5);
+    await flutterTtsOutput.speak(result);
   }
 
-  Future<void> pause() async {
-    try {
-      await flutterTts.pause();
-    } catch (e) {
-      await flutterTts.stop();
-    }
+  // Dừng output
+  Future<void> pauseOut() async {
+    await flutterTtsOutput.pause();
   }
-
 }

@@ -57,7 +57,7 @@ class _ShowMessDialogState extends State<ShowMessDialog>
   Widget build(BuildContext context) {
     final iconData = widget.isError ? Icons.error_outline : Icons.check_circle_outline;
     final iconColor = widget.isError ? Colors.red.shade400 : Colors.green.shade400;
-    final title = widget.isError ? "Lỗi" : "Thành công";
+    final title = widget.isError ? "Thất Bại" : "Thành công";
     final gradientColors = widget.isError
         ? [Colors.red.shade50, Colors.red.shade100]
         : [Colors.green.shade50, Colors.green.shade100];
@@ -114,7 +114,6 @@ class _ShowMessDialogState extends State<ShowMessDialog>
                   ),
                   const SizedBox(height: 20),
 
-                  // Title
                   Text(
                     title,
                     style: const TextStyle(
@@ -126,7 +125,6 @@ class _ShowMessDialogState extends State<ShowMessDialog>
                   ),
                   const SizedBox(height: 12),
 
-                  // Message
                   Text(
                     widget.message,
                     textAlign: TextAlign.center,
