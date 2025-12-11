@@ -12,14 +12,11 @@ class PageExercisesList extends StatefulWidget {
   State<PageExercisesList> createState() => _PageExercisesListState();
 }
 
-class _PageExercisesListState extends State<PageExercisesList>
-    with SingleTickerProviderStateMixin {
-
+class _PageExercisesListState extends State<PageExercisesList> with SingleTickerProviderStateMixin {
   final ExerciseController controller = ExerciseController();
 
   late Future<void> _futureLoad;
 
-  // Animation
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -30,7 +27,9 @@ class _PageExercisesListState extends State<PageExercisesList>
   @override
   void initState() {
     super.initState();
-
+    controller.onAudioStateChange = () {
+      if (mounted) setState(() {});
+    };
     _futureLoad = controller.fetchExercisesByTopicRef(widget.topicRef);
 
     _animationController = AnimationController(
@@ -170,8 +169,9 @@ class _PageExercisesListState extends State<PageExercisesList>
                                   Center(
                                     child: InkWell(
                                       borderRadius: BorderRadius.circular(40),
-                                      onTap: () {
-                                        controller.speakExercises(item.audioUrl);
+                                      onTap: () async {
+                                        await controller.speakExercises(item.audioUrl);
+                                        setState(() {}); // cập nhật UI
                                       },
                                       child: Container(
                                         padding: const EdgeInsets.all(14),
@@ -186,8 +186,8 @@ class _PageExercisesListState extends State<PageExercisesList>
                                             )
                                           ],
                                         ),
-                                        child: const Icon(
-                                          Icons.volume_up_rounded,
+                                        child: Icon(
+                                          controller.isPlaying ? Icons.stop : Icons.volume_up_rounded,
                                           size: 32,
                                           color: Colors.orange,
                                         ),

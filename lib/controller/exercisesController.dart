@@ -99,14 +99,37 @@ class ExerciseController {
   }
 
   final FlutterTts flutterTts = FlutterTts();
-  Future<void> speakExercises(String audioUrl ) async {
+  bool isPlaying = false;
+  VoidCallback? onAudioStateChange;
+
+
+  Future<void> speakExercises(String audioUrl) async {
     if (audioUrl.isEmpty) return;
 
-    String locale = "en-US";
+    if (isPlaying) {
+      await flutterTts.stop();
+      isPlaying = false;
+      onAudioStateChange?.call();   // 🔥 báo UI cập nhật
+      return;
+    }
 
-    await flutterTts.setLanguage(locale);
+    isPlaying = true;
+    onAudioStateChange?.call();   // 🔥 cập nhật icon sang STOP
+
+    await flutterTts.setLanguage("en-US");
     await flutterTts.setPitch(1.0);
-    await flutterTts.setSpeechRate(0.3);
+    await flutterTts.setSpeechRate(0.2);
+
     await flutterTts.speak(audioUrl);
+
+    flutterTts.setCompletionHandler(() {
+      isPlaying = false;
+      onAudioStateChange?.call();   // 🔥 cập nhật icon quay lại LOA
+    });
+  }
+
+  Future<void> stopSpeaking() async {
+    await flutterTts.stop();
+    isPlaying = false;
   }
 }
