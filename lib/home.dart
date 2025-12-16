@@ -3,9 +3,8 @@ import 'package:beelingual/exercises/topicExercisesList.dart';
 import 'package:beelingual/grammar/gammarList.dart';
 import 'package:beelingual/translate.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'controller/accountController.dart';
-import 'logIn.dart';
+import 'listening/listeningLevel.dart';
 
 class PageHome extends StatefulWidget {
   const PageHome({super.key});
@@ -84,6 +83,14 @@ class _PageHomeState extends State<PageHome> {
               );
             },
             child: const Text('Exercises'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => PageListeningLevel()),
+              );
+            },
+            child: const Text('Listening'),
           ),
         ],
       ),

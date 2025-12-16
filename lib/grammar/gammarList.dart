@@ -25,7 +25,6 @@ class _PageGrammarListState extends State<PageGrammarList> {
       appBar: AppBar(
         title: const Text("Grammar"),
         backgroundColor: Color(0xFFFFF176),
-        elevation: 0,
       ),
       backgroundColor: Color(0xFFFFF9C4),
       body: FutureBuilder<List<Category>>(

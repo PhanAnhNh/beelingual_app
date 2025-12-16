@@ -3,16 +3,22 @@ import '../controller/exercisesController.dart';
 import '../model/exercises.dart';
 import '../component/messDialog.dart';
 
-class PageExercisesList extends StatefulWidget {
-  final String topicRef;
+class PageListeningExercise extends StatefulWidget {
+  final String level;
+  final String skill;
 
-  const PageExercisesList({super.key, required this.topicRef});
+  const PageListeningExercise({
+    super.key,
+    required this.level,
+    required this.skill,
+  });
 
   @override
-  State<PageExercisesList> createState() => _PageExercisesListState();
+  State<PageListeningExercise> createState() => _PageListeningExerciseState();
 }
 
-class _PageExercisesListState extends State<PageExercisesList> with SingleTickerProviderStateMixin {
+class _PageListeningExerciseState extends State<PageListeningExercise>
+    with SingleTickerProviderStateMixin {
   final ExerciseController controller = ExerciseController();
 
   late Future<void> _futureLoad;
@@ -23,16 +29,22 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
 
   String? selectedOption;
   TextEditingController answerController = TextEditingController();
+
   List<TextEditingController> clozeControllers = [];
   List<String> clozeAnswers = [];
 
   @override
   void initState() {
     super.initState();
+
     controller.onAudioStateChange = () {
       if (mounted) setState(() {});
     };
-    _futureLoad = controller.fetchExercisesByTopicRef(widget.topicRef);
+
+    _futureLoad = controller.fetchExercisesByLevelAndSkill(
+      level: widget.level,
+      skill: widget.skill,
+    );
 
     _animationController = AnimationController(
       vsync: this,
@@ -57,6 +69,9 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
   void dispose() {
     _animationController.dispose();
     answerController.dispose();
+    for (final c in clozeControllers) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -73,7 +88,7 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
         title: Text(
-          widget.topicRef,
+          "${widget.skill.toUpperCase()} - ${widget.level}",
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.black87,
@@ -98,7 +113,8 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
             return const Center(child: Text("Không có bài tập"));
           }
 
-          final Exercises item = controller.exercises[controller.currentIndex];
+          final Exercises item =
+          controller.exercises[controller.currentIndex];
 
           // ===== INIT FILL IN =====
           if (item.type == "fill_in_blank") {
@@ -142,7 +158,8 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
                 ),
                 child: FractionallySizedBox(
                   widthFactor:
-                  (controller.currentIndex + 1) / controller.exercises.length,
+                  (controller.currentIndex + 1) /
+                      controller.exercises.length,
                   alignment: Alignment.centerLeft,
                   child: Container(
                     decoration: BoxDecoration(
@@ -202,8 +219,7 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
                                       borderRadius:
                                       BorderRadius.circular(40),
                                       onTap: () async {
-                                        await controller.speakExercises(
-                                            item.audioUrl);
+                                        await controller.speakLisExercises(audioUrl: item.audioUrl, level: item.level);
                                       },
                                       child: Container(
                                         padding:
@@ -234,18 +250,22 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
                           if (item.type == "multiple_choice")
                             Column(
                               children: item.options.map((o) {
-                                final answered = controller.isAnswered();
-                                final userChoice = controller.userAnswers[item.id];
+                                final answered =
+                                controller.isAnswered();
+                                final userChoice =
+                                controller.userAnswers[item.id];
                                 final isSelected = answered
-                                    ? (userChoice == o.text)
-                                    : (selectedOption == o.text);
+                                    ? userChoice == o.text
+                                    : selectedOption == o.text;
 
                                 return Opacity(
                                   opacity: answered ? 0.5 : 1,
                                   child: Container(
-                                    margin: const EdgeInsets.only(bottom: 12),
+                                    margin: const EdgeInsets.only(
+                                        bottom: 12),
                                     decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(16),
+                                      borderRadius:
+                                      BorderRadius.circular(16),
                                       border: Border.all(
                                         color: isSelected
                                             ? const Color(
@@ -254,7 +274,7 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
                                         width: 2,
                                       ),
                                     ),
-                                    child: RadioListTile<String>(
+                                    child: RadioListTile(
                                       enabled: !answered,
                                       value: o.text,
                                       groupValue: selectedOption,
@@ -262,11 +282,13 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
                                           ? null
                                           : (v) {
                                         setState(() {
-                                          selectedOption = v.toString();
+                                          selectedOption =
+                                              v.toString();
                                         });
                                       },
                                       title: Text(o.text),
-                                      activeColor: const Color(0xFFFFD54F),
+                                      activeColor:
+                                      const Color(0xFFFFD54F),
                                     ),
                                   ),
                                 );
