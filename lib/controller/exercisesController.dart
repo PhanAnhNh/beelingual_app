@@ -51,9 +51,16 @@ class ExerciseController {
       page++;
     } while (page <= totalPages);
 
-    exercises = allExercises.where((e) => e.topicRef == topicRef).toList();
+    currentIndex = 0;
+    userAnswers.clear();
+    final filtered = allExercises.where((e) {
+      return e.topicRef == topicRef;
+    }).toList();
+    filtered.shuffle();
 
-    exercises.shuffle();
+    exercises = filtered.length > 10
+        ? filtered.take(10).toList()
+        : filtered;
   }
 
   Future<void> fetchExercisesByLevelAndSkill({
