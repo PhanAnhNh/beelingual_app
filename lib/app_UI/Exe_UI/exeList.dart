@@ -353,7 +353,7 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
                                       "multiple_choice") {
                                     if (selectedOption == null) {
                                       showErrorDialog(context,
-                                          "Vui lòng chọn đáp án!");
+                                          "Thông báo","Vui lòng chọn đáp án!");
                                       return;
                                     }
                                     answer = selectedOption!;
@@ -365,7 +365,7 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
                                         .trim()
                                         .isEmpty) {
                                       showErrorDialog(context,
-                                          "Bạn chưa nhập đáp án!");
+                                          "Thông báo","Bạn chưa nhập đáp án!");
                                       return;
                                     }
                                     answer = answerController.text
@@ -380,7 +380,7 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
                                           .trim()
                                           .isEmpty) {
                                         showErrorDialog(context,
-                                            "Bạn chưa nhập đủ đáp án!");
+                                            "Thông báo","Bạn chưa nhập đủ đáp án!");
                                         return;
                                       }
                                     }

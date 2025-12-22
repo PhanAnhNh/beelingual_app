@@ -208,7 +208,7 @@ class _PageLogInState extends State<PageLogIn> {
     String passwordText = pass.text.trim();
 
     if (usernameText.isEmpty || passwordText.isEmpty) {
-      showErrorDialog(context, "Vui lòng nhập đầy đủ thông tin");
+      showErrorDialog(context, "Thông báo","Vui lòng nhập đầy đủ thông tin");
       return;
     }
 
@@ -237,11 +237,11 @@ class _PageLogInState extends State<PageLogIn> {
         );
       } else {
         if (!mounted) return;
-        showErrorDialog(context, "Đăng nhập thất bại!");
+        showErrorDialog(context, "Thông báo","Đăng nhập thất bại!");
       }
     } catch (e) {
       if (mounted) {
-        showErrorDialog(context, "Đã có lỗi xảy ra: $e");
+        showErrorDialog(context, "Thông báo","Đã có lỗi xảy ra: $e");
       }
     } finally {
       // 4. Tắt loading dù thành công hay thất bại

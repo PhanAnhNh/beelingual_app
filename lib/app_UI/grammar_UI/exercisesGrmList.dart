@@ -243,13 +243,13 @@ class _PageExercisesListState extends State<PageExercisesGrmList>
 
                                   if (item.options.isNotEmpty) {
                                     if (selectedOption == null) {
-                                      showErrorDialog(context, "Vui lòng chọn đáp án!");
+                                      showErrorDialog(context, "Thông báo","Vui lòng chọn đáp án!");
                                       return;
                                     }
                                     answer = selectedOption!;
                                   } else {
                                     if (answerController.text.trim().isEmpty) {
-                                      showErrorDialog(context, "Bạn chưa nhập đáp án!");
+                                      showErrorDialog(context, "Thông báo","Bạn chưa nhập đáp án!");
                                       return;
                                     }
                                     answer = answerController.text.trim();

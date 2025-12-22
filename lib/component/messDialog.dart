@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
 class ShowMessDialog extends StatefulWidget {
+  final String title;   // ✅ thêm title
   final String message;
   final bool isError;
 
   const ShowMessDialog({
     super.key,
+    required this.title,
     required this.message,
     this.isError = true,
   });
@@ -23,20 +25,13 @@ class _ShowMessDialogState extends State<ShowMessDialog>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 400),
-      vsync: this,
-    );
+    _controller =
+        AnimationController(duration: const Duration(milliseconds: 400), vsync: this);
 
-    _scaleAnimation = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutBack,
-    );
-
-    _fadeAnimation = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOut,
-    );
+    _scaleAnimation =
+        CurvedAnimation(parent: _controller, curve: Curves.easeOutBack);
+    _fadeAnimation =
+        CurvedAnimation(parent: _controller, curve: Curves.easeOut);
 
     _controller.forward();
   }
@@ -48,20 +43,22 @@ class _ShowMessDialogState extends State<ShowMessDialog>
   }
 
   void _closeDialog() {
-    _controller.reverse().then((_) {
-      Navigator.pop(context);
-    });
+    _controller.reverse().then((_) => Navigator.pop(context));
   }
 
   @override
   Widget build(BuildContext context) {
-    final iconData = widget.isError ? Icons.error_outline : Icons.check_circle_outline;
-    final iconColor = widget.isError ? Colors.red.shade400 : Colors.green.shade400;
-    final title = widget.isError ? "Lỗi" : "Thành công";
+    final iconData =
+    widget.isError ? Icons.error_outline : Icons.check_circle_outline;
+    final iconColor =
+    widget.isError ? Colors.red.shade400 : Colors.green.shade400;
+
     final gradientColors = widget.isError
         ? [Colors.red.shade50, Colors.red.shade100]
         : [Colors.green.shade50, Colors.green.shade100];
-    final buttonColor = widget.isError ? Colors.red.shade400 : Colors.green.shade400;
+
+    final buttonColor =
+    widget.isError ? Colors.red.shade400 : Colors.green.shade400;
 
     return FadeTransition(
       opacity: _fadeAnimation,
@@ -88,7 +85,7 @@ class _ShowMessDialogState extends State<ShowMessDialog>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Icon với gradient background
+                  // ICON
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -98,35 +95,23 @@ class _ShowMessDialogState extends State<ShowMessDialog>
                         end: Alignment.bottomRight,
                       ),
                       shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: iconColor.withOpacity(0.3),
-                          blurRadius: 20,
-                          spreadRadius: 2,
-                        ),
-                      ],
                     ),
-                    child: Icon(
-                      iconData,
-                      color: iconColor,
-                      size: 48,
-                    ),
+                    child: Icon(iconData, color: iconColor, size: 48),
                   ),
                   const SizedBox(height: 20),
 
-                  // Title
+                  // TITLE (TRUYỀN VÀO)
                   Text(
-                    title,
+                    widget.title,
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,
-                      letterSpacing: 0.5,
                     ),
                   ),
                   const SizedBox(height: 12),
 
-                  // Message
+                  // MESSAGE
                   Text(
                     widget.message,
                     textAlign: TextAlign.center,
@@ -138,7 +123,7 @@ class _ShowMessDialogState extends State<ShowMessDialog>
                   ),
                   const SizedBox(height: 28),
 
-                  // Button
+                  // BUTTON
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -146,17 +131,8 @@ class _ShowMessDialogState extends State<ShowMessDialog>
                           buttonColor.withOpacity(0.8),
                           buttonColor,
                         ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
                       ),
                       borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: buttonColor.withOpacity(0.4),
-                          blurRadius: 12,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
                     ),
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
@@ -174,7 +150,6 @@ class _ShowMessDialogState extends State<ShowMessDialog>
                           color: Colors.white,
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
                         ),
                       ),
                     ),
@@ -189,29 +164,60 @@ class _ShowMessDialogState extends State<ShowMessDialog>
   }
 }
 
-Future<void> showErrorDialog(BuildContext context, String message) {
+
+Future<void> showErrorDialog(BuildContext context,String title, String message) {
   return showDialog(
     barrierDismissible: true,
     barrierColor: Colors.black54,
     context: context,
     builder: (_) => ShowMessDialog(
+      title: title,
       message: message,
       isError: true,
     ),
   );
 }
 
-Future<void> showSuccessDialog(BuildContext context, String message) {
+Future<void> showSuccessDialog(BuildContext context,String title, String message) {
   return showDialog(
     barrierDismissible: true,
     barrierColor: Colors.black54,
     context: context,
     builder: (_) => ShowMessDialog(
+      title: title,
       message: message,
       isError: false,
     ),
   );
 }
+
+Future<void> showRightAnswer(BuildContext context,String title, String message) {
+  return showDialog(
+    barrierDismissible: true,
+    barrierColor: Colors.black54,
+    context: context,
+    builder: (_) => ShowMessDialog(
+      title: title,
+      message: message,
+      isError: false,
+    ),
+  );
+}
+
+
+Future<void> showWrongAnswer(BuildContext context,String title, String message) {
+  return showDialog(
+    barrierDismissible: true,
+    barrierColor: Colors.black54,
+    context: context,
+    builder: (_) => ShowMessDialog(
+      title: title,
+      message: message,
+      isError: true, // 👉 dùng style lỗi (màu đỏ)
+    ),
+  );
+}
+
 
 Future<bool?> showConfirmDialog(
     BuildContext context, {

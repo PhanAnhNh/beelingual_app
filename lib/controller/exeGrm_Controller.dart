@@ -77,9 +77,9 @@ class ExerciseGrmController {
         ex.correctAnswer.trim().toLowerCase();
 
     if (isCorrect) {
-      await showSuccessDialog(context, "Bạn đã trả lời đúng!");
+      await showSuccessDialog(context, "Thông báo","Bạn đã trả lời đúng!");
     } else {
-      await showErrorDialog(context, "Sai rồi!");
+      await showErrorDialog(context, "Thông báo","Sai rồi!");
     }
 
     goToNextQuestion(context);

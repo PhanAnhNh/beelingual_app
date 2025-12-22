@@ -366,7 +366,7 @@ class _PageListeningExerciseState extends State<PageListeningExercise>
                                       "multiple_choice") {
                                     if (selectedOption == null) {
                                       showErrorDialog(context,
-                                          "Vui lòng chọn đáp án!");
+                                          "Thông báo","Vui lòng chọn đáp án!");
                                       return;
                                     }
                                     answer = selectedOption!;
@@ -378,7 +378,7 @@ class _PageListeningExerciseState extends State<PageListeningExercise>
                                         .trim()
                                         .isEmpty) {
                                       showErrorDialog(context,
-                                          "Bạn chưa nhập đáp án!");
+                                          "Thông báo" ,"Bạn chưa nhập đáp án!");
                                       return;
                                     }
                                     answer = answerController.text
@@ -393,7 +393,7 @@ class _PageListeningExerciseState extends State<PageListeningExercise>
                                           .trim()
                                           .isEmpty) {
                                         showErrorDialog(context,
-                                            "Bạn chưa nhập đủ đáp án!");
+                                            "Thông báo" ,"Bạn chưa nhập đủ đáp án!");
                                         return;
                                       }
                                     }

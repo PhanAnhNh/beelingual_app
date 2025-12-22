@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_auth_ui/supabase_auth_ui.dart';
 
 final urlAPI = 'https://english-app-mupk.onrender.com';
 
@@ -51,6 +52,25 @@ class SessionManager {
     }
   }
 
+  bool isValidEmail(String email) {
+    final emailRegex = RegExp(
+      r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+    );
+    return emailRegex.hasMatch(email);
+  }
+
+  bool isValidUsername(String username) {
+    final usernameRegex = RegExp(r'^\S+$');
+    return usernameRegex.hasMatch(username);
+  }
+
+  bool isValidPassword(String password) {
+    final passwordRegex = RegExp(
+      r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{6,24}$',
+    );
+    return passwordRegex.hasMatch(password);
+  }
+
   Future<Map<String, dynamic>?> signUp({
     required String username,
     required String email,
@@ -84,6 +104,21 @@ class SessionManager {
       return {"error": true, "message": "Không thể kết nối server!"};
     }
   }
+
+  // Thay dòng cũ bằng dòng này:
+  SupabaseClient get supabase => Supabase.instance.client;
+  Future<AuthResponse> signUpSupabase({
+    required String email,
+    required String password,
+  }) async {
+    final res = await supabase.auth.signUp(
+      email: email,
+      password: password,
+    );
+
+    return res;
+  }
+
 
   // --- 2. LƯU TOKEN ---
   Future<void> saveSession({
