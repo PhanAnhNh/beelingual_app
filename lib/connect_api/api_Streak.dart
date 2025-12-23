@@ -7,16 +7,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'url.dart';
 
 class StreakService {
-  // Giả sử baseUrl của bạn là http://10.0.2.2:3000 hoặc URL Render
-  final String baseUrl = "https://english-app-mupk.onrender.com";
-
   Future<Map<String, dynamic>> getMyStreak() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('accessToken'); // Lấy token đã lưu khi login
 
       final response = await http.get(
-        Uri.parse('$baseUrl/api/my-streak'),
+        Uri.parse('$urlAPI/api/my-streak'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
