@@ -1,6 +1,7 @@
 class User {
   final String id;
   final String username;
+  final String fullname;
   final String role;
   final String email;
   final String level;
@@ -12,6 +13,7 @@ class User {
   User({
     required this.id,
     required this.username,
+    required this.fullname,
     required this.role,
     required this.email,
     required this.level,
@@ -25,6 +27,7 @@ class User {
     return User(
       id: json['_id'],
       username: json['username'],
+      fullname: json['fullname'],
       role: json['role'],
       email: json['email'],
       level: json['level'],
