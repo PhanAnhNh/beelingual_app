@@ -28,30 +28,115 @@ class LearningTopicsScreen extends StatefulWidget {
 }
 
 class _LearningTopicsScreenState extends State<LearningTopicsScreen> {
-  // Biến chứa dữ liệu tương lai
-  late Future<List<Topic>> futureTopics;
+  // PAGINATION STATE
+  List<Topic> _topics = [];
+  int _currentPage = 1;
+  bool _isLoading = false;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  int _totalTopics = 0;
+
+  // SCROLL CONTROLLER
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-
-    // Sử dụng Future.delayed để có thể truyền context an toàn
-    futureTopics = Future.delayed(Duration.zero, () {
+    
+    // Load progress và topics đầu tiên
+    Future.delayed(Duration.zero, () {
       if (mounted) {
         Provider.of<UserProgressProvider>(context, listen: false).fetchProgress(context);
+        _loadInitialTopics();
       }
-      // Truyền context vào để nếu lỗi thì tự logout
-      return fetchTopics(context);
     });
+
+    // Thêm scroll listener để detect khi scroll gần cuối
+    _scrollController.addListener(_onScroll);
   }
 
-  Future<void> _refreshData() async{
-    await Provider.of<UserProgressProvider>(context, listen: false).fetchProgress(context);
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  // SCROLL LISTENER: Trigger load thêm khi scroll đến 80% cuối danh sách
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.8) {
+      _loadMoreTopics();
+    }
+  }
+
+  // LOAD 6 TOPICS ĐẦU TIÊN
+  Future<void> _loadInitialTopics() async {
+    if (_isLoading) return;
 
     setState(() {
-      futureTopics = fetchTopics(context);
+      _isLoading = true;
+      _currentPage = 1;
+      _topics.clear();
     });
-    await futureTopics;
+
+    try {
+      final result = await fetchTopicsPaginated(
+        page: 1,
+        limit: 6,
+        context: context,
+      );
+
+      if (mounted) {
+        setState(() {
+          _topics = List<Topic>.from(result['data']);
+          _totalTopics = result['total'] ?? 0;
+          _hasMore = _topics.length < _totalTopics;
+          _currentPage = 2; // Trang tiếp theo sẽ là 2
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print("Error loading initial topics: $e");
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  // LOAD THÊM 2 TOPICS MỖI LẦN SCROLL
+  Future<void> _loadMoreTopics() async {
+    if (_isLoadingMore || !_hasMore || _isLoading) return;
+
+    setState(() => _isLoadingMore = true);
+
+    try {
+      final result = await fetchTopicsPaginated(
+        page: _currentPage,
+        limit: 2,
+        context: context,
+      );
+
+      if (mounted) {
+        final newTopics = List<Topic>.from(result['data']);
+        
+        setState(() {
+          _topics.addAll(newTopics);
+          _hasMore = _topics.length < _totalTopics;
+          _currentPage++;
+          _isLoadingMore = false;
+        });
+      }
+    } catch (e) {
+      print("Error loading more topics: $e");
+      if (mounted) {
+        setState(() => _isLoadingMore = false);
+      }
+    }
+  }
+
+  // PULL TO REFRESH: Reset về trang đầu
+  Future<void> _refreshData() async {
+    await Provider.of<UserProgressProvider>(context, listen: false).fetchProgress(context);
+    await _loadInitialTopics();
   }
 
   @override
@@ -76,36 +161,34 @@ class _LearningTopicsScreenState extends State<LearningTopicsScreen> {
                 child: _buildHeader(),
               ),
               Expanded(
-                child: FutureBuilder<List<Topic>>(
-                  future: futureTopics,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    } else if (snapshot.hasError) {
-                      return Center(child: Text("Lỗi: ${snapshot.error}"));
-                    } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                      return const Center(child: Text("Không có chủ đề nào"));
-                    }
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _topics.isEmpty
+                        ? const Center(child: Text("Không có chủ đề nào"))
+                        : GridView.builder(
+                            controller: _scrollController,
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 20.0,
+                              mainAxisSpacing: 20.0,
+                              childAspectRatio: 0.8,
+                            ),
+                            itemCount: _topics.length + (_isLoadingMore ? 1 : 0),
+                            itemBuilder: (context, index) {
+                              // Hiển thị loading indicator ở cuối danh sách
+                              if (index == _topics.length) {
+                                return const Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(16.0),
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                );
+                              }
 
-                    // Sắp xếp theo order trước khi hiển thị
-                    final topics = List<Topic>.from(snapshot.data!);
-                    topics.sort((a, b) => a.order.compareTo(b.order));
-
-                    return GridView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 20.0,
-                        mainAxisSpacing: 20.0,
-                        childAspectRatio: 0.8,
-                      ),
-                      itemCount: topics.length,
-                      itemBuilder: (context, index) {
-                        return TopicCard(topic: topics[index]);
-                      },
-                    );
-                  },
-                ),
+                              return TopicCard(topic: _topics[index]);
+                            },
+                          ),
               )
             ],
           ),

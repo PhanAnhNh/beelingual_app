@@ -324,6 +324,76 @@ Future<List<Topic>> fetchTopics([BuildContext? context]) async {
   }
 }
 
+// HÀM MỚI: Fetch Topics với Pagination (cho Lazy Loading)
+Future<Map<String, dynamic>> fetchTopicsPaginated({
+  required int page,
+  required int limit,
+  BuildContext? context,
+}) async {
+  final url = Uri.parse('$urlAPI/api/topics?page=$page&limit=$limit');
+  final session = SessionManager();
+  
+  try {
+    String? token = await session.getAccessToken();
+
+    var res = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    // Xử lý token hết hạn (401)
+    if (res.statusCode == 401) {
+      print("Token hết hạn (401). Đang thử gia hạn...");
+      final refreshSuccess = await session.refreshAccessToken();
+
+      if (refreshSuccess) {
+        token = await session.getAccessToken();
+        res = await http.get(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        );
+      } else {
+        if (context != null && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Phiên đăng nhập hết hạn")),
+          );
+          session.logout(context);
+        }
+        return {'total': 0, 'page': page, 'limit': limit, 'totalPages': 0, 'data': []};
+      }
+    }
+
+    // Xử lý kết quả (200 OK)
+    if (res.statusCode == 200) {
+      final Map<String, dynamic> decoded = json.decode(res.body);
+      
+      // API trả về: { total, page, limit, totalPages, data: [...] }
+      final List<dynamic> topicsJson = decoded['data'] ?? [];
+      final List<Topic> topics = topicsJson.map((e) => Topic.fromJson(e)).toList();
+      
+      return {
+        'total': decoded['total'] ?? 0,
+        'page': decoded['page'] ?? page,
+        'limit': decoded['limit'] ?? limit,
+        'totalPages': decoded['totalPages'] ?? 0,
+        'data': topics,
+      };
+    } else {
+      print("Lỗi lấy data: ${res.statusCode} - ${res.body}");
+      return {'total': 0, 'page': page, 'limit': limit, 'totalPages': 0, 'data': []};
+    }
+  } catch (e) {
+    print("Error fetchTopicsPaginated: $e");
+    return {'total': 0, 'page': page, 'limit': limit, 'totalPages': 0, 'data': []};
+  }
+}
+
 Future<List<Vocabulary>> fetchVocabulariesByTopic(String topicId, String level, [BuildContext? context]) async {
   // LƯU Ý: Kiểm tra lại đường dẫn API của bạn.
   // Ví dụ: /api/vocabularies?topicId=... hoặc /api/topics/:id/vocabularies

@@ -82,6 +82,8 @@ class _PageListeningExerciseState extends State<PageListeningExercise>
     for (final c in clozeControllers) {
       c.dispose();
     }
+    // Cleanup TTS session when user exits
+    controller.dispose();
     super.dispose();
   }
 
@@ -113,8 +115,21 @@ class _PageListeningExerciseState extends State<PageListeningExercise>
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation(Color(0xFFFFF176)),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation(Color(0xFFFFF176)),
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'Preparing audio...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ],
               ),
             );
           }
@@ -229,7 +244,11 @@ class _PageListeningExerciseState extends State<PageListeningExercise>
                                       borderRadius:
                                       BorderRadius.circular(40),
                                       onTap: () async {
-                                        await controller.speakLisExercises(audioUrl: item.audioUrl, level: item.level);
+                                        await controller.speakLisExercises(
+                                          exerciseId: item.id,
+                                          audioUrl: item.audioUrl,
+                                          level: item.level,
+                                        );
                                       },
                                       child: Container(
                                         padding:
@@ -240,10 +259,9 @@ class _PageListeningExerciseState extends State<PageListeningExercise>
                                           shape: BoxShape.circle,
                                         ),
                                         child: Icon(
-                                          controller.isPlaying
+                                          controller.isPlayingGeminiAudio
                                               ? Icons.stop
-                                              : Icons
-                                              .volume_up_rounded,
+                                              : Icons.volume_up_rounded,
                                           size: 32,
                                           color: Colors.orange,
                                         ),

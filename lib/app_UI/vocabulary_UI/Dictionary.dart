@@ -5,7 +5,7 @@ import 'package:beelingual/model/useVocabulary.dart';
 import 'package:flutter/material.dart';
 import 'package:beelingual/connect_api/api_connect.dart';
 import 'package:provider/provider.dart';
-import 'package:beelingual/controller/exercise_Controller.dart';
+import 'package:beelingual/controller/vocabulary_tts_controller.dart';
 
 class VocabularyLearnedScreen extends StatefulWidget {
   const VocabularyLearnedScreen({super.key});
@@ -17,7 +17,7 @@ class VocabularyLearnedScreen extends StatefulWidget {
 class _VocabularyLearnedScreenState extends State<VocabularyLearnedScreen>
     with SingleTickerProviderStateMixin {
   Set<String> _selectedVocabIds = {};
-  final ExerciseController exerciseController = ExerciseController();
+  final VocabularyTTSController _ttsController = VocabularyTTSController();
   late AnimationController _animationController;
 
   // Theme Colors
@@ -465,7 +465,7 @@ class _VocabularyLearnedScreenState extends State<VocabularyLearnedScreen>
                               color: Colors.transparent,
                               child: InkWell(
                                 borderRadius: BorderRadius.circular(12),
-                                onTap: () => exerciseController.speakExercises(vocab.word),
+                                onTap: () => _ttsController.speak(vocab.word),
                                 child: Container(
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(

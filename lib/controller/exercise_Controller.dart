@@ -4,14 +4,20 @@ import 'package:beelingual/model/model_exercise.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_tts/flutter_tts.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../component/messDialog.dart';
 import '../connect_api/url.dart';
+import '../connect_api/tts_service.dart';
 
 class ExerciseController {
   List<Exercises> exercises = [];
   Map<String, String> userAnswers = {};
   int currentIndex = 0;
+  
+  // TTS Service
+  final TTSService _ttsService = TTSService();
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  bool isPlayingGeminiAudio = false;
 
   Future<void> fetchExercisesByTopicId(String topicId) async {
     final prefs = await SharedPreferences.getInstance();
@@ -46,6 +52,27 @@ class ExerciseController {
 
     currentIndex = 0;
     userAnswers.clear();
+    
+    await _initializeTTSSession();
+  }
+  
+  Future<void> _initializeTTSSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('userId') ?? 'guest';
+    await _ttsService.initSession(userId);
+    
+    // Get all listening exercise IDs
+    final listeningIds = exercises
+        .where((ex) => ex.skill == 'listening')
+        .map((ex) => ex.id)
+        .toList();
+    
+    // Prefetch ALL exercises (WAIT for completion)
+    if (listeningIds.isNotEmpty) {
+      print('⏳ Waiting for ${listeningIds.length} audio files to download...');
+      await _ttsService.prefetchAll(listeningIds);
+      print('✅ All audio files ready!');
+    }
   }
 
 
@@ -83,6 +110,9 @@ class ExerciseController {
 
     currentIndex = 0;
     userAnswers.clear();
+    
+    // Initialize TTS session and prefetch - WAIT for completion
+    await _initializeTTSSession();
   }
 
 
@@ -106,12 +136,15 @@ class ExerciseController {
     goToNextQuestion(context);
   }
 
-  void goToNextQuestion(BuildContext context) {
+  void goToNextQuestion(BuildContext context) async {
     if (currentIndex < exercises.length - 1) {
       currentIndex++;
       return;
     }
 
+    // Cleanup session when finishing (delete all cached audio at once)
+    await _ttsService.cleanupSession();
+    
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -128,87 +161,105 @@ class ExerciseController {
     return userAnswers.containsKey(ex.id);
   }
 
-  final FlutterTts flutterTts = FlutterTts();
-  bool isPlaying = false;
   VoidCallback? onAudioStateChange;
 
-  double _getSpeechRateByLevel(String level) {
-    switch (level.toUpperCase()) {
-      case 'A1':
-      case 'A2':
-        return 0.2;
 
-      case 'B1':
-      case 'B2':
-        return 0.3;
 
-      case 'C1':
-      case 'C2':
-        return 0.5;
-
-      default:
-        return 0.4;
-    }
-  }
-
+  /// Play listening exercise audio using Gemini TTS
   Future<void> speakLisExercises({
+    required String exerciseId,
     required String audioUrl,
     required String level,
   }) async {
     if (audioUrl.isEmpty) return;
 
-    if (isPlaying) {
-      await flutterTts.stop();
-      isPlaying = false;
+    // Stop if already playing
+    if (isPlayingGeminiAudio) {
+      await _audioPlayer.stop();
+      isPlayingGeminiAudio = false;
       onAudioStateChange?.call();
       return;
     }
 
-    isPlaying = true;
-    onAudioStateChange?.call();
-
-    await flutterTts.setLanguage("en-US");
-    await flutterTts.setPitch(1.0);
-    await flutterTts.setSpeechRate(
-      _getSpeechRateByLevel(level),
-    );
-
-    await flutterTts.speak(audioUrl);
-
-    flutterTts.setCompletionHandler(() {
-      isPlaying = false;
+    try {
+      isPlayingGeminiAudio = true;
       onAudioStateChange?.call();
-    });
+
+      // Get audio source (Local cache or URL)
+      final source = await _ttsService.getAudioSource(exerciseId);
+      
+      // Play audio from source
+      if (source is DeviceFileSource) {
+        await _audioPlayer.play(source);
+      } else if (source is UrlSource) {
+        await _audioPlayer.play(source);
+      }
+
+      // Listen for completion
+      _audioPlayer.onPlayerComplete.listen((_) {
+        isPlayingGeminiAudio = false;
+        onAudioStateChange?.call();
+      });
+      
+    } catch (e) {
+      print('❌ Error playing Gemini audio: $e');
+      isPlayingGeminiAudio = false;
+      onAudioStateChange?.call();
+    }
   }
+  
+  /// Play audio for regular exercises (vocab, grammar)
+  /// Uses same Gemini TTS but for question text
+  Future<void> speakExercises(String exerciseId, String audioText) async {
+    if (audioText.isEmpty) return;
 
-
-  Future<void> speakExercises(String audioUrl) async {
-    if (audioUrl.isEmpty) return;
-
-    if (isPlaying) {
-      await flutterTts.stop();
-      isPlaying = false;
+    // Stop if already playing
+    if (isPlayingGeminiAudio) {
+      await _audioPlayer.stop();
+      isPlayingGeminiAudio = false;
       onAudioStateChange?.call();
       return;
     }
 
-    isPlaying = true;
-    onAudioStateChange?.call();
-
-    await flutterTts.setLanguage("en-US");
-    await flutterTts.setPitch(1.0);
-    await flutterTts.setSpeechRate(0.2);
-
-    await flutterTts.speak(audioUrl);
-
-    flutterTts.setCompletionHandler(() {
-      isPlaying = false;
+    try {
+      isPlayingGeminiAudio = true;
       onAudioStateChange?.call();
-    });
+
+      // Get audio source (Local cache or URL)
+      final source = await _ttsService.getAudioSource(exerciseId);
+      
+      // Play audio from source
+      if (source is DeviceFileSource) {
+        await _audioPlayer.play(source);
+      } else if (source is UrlSource) {
+        await _audioPlayer.play(source);
+      }
+
+      // Listen for completion
+      _audioPlayer.onPlayerComplete.listen((_) {
+        isPlayingGeminiAudio = false;
+        onAudioStateChange?.call();
+      });
+      
+    } catch (e) {
+      print('❌ Error playing audio: $e');
+      isPlayingGeminiAudio = false;
+      onAudioStateChange?.call();
+    }
   }
+  
+
+
+
 
   Future<void> stopSpeaking() async {
-    await flutterTts.stop();
-    isPlaying = false;
+    await _audioPlayer.stop();
+    isPlayingGeminiAudio = false;
+  }
+  
+  /// Dispose resources
+  Future<void> dispose() async {
+    await _audioPlayer.dispose();
+    await _ttsService.cleanupSession();
   }
 }

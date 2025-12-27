@@ -67,6 +67,8 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
   void dispose() {
     _animationController.dispose();
     answerController.dispose();
+    // Cleanup TTS session when user exits
+    controller.dispose();
     super.dispose();
   }
 
@@ -222,7 +224,7 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
                                       BorderRadius.circular(40),
                                       onTap: () async {
                                         await controller.speakExercises(
-                                            item.audioUrl);
+                                            item.id, item.audioUrl);
                                       },
                                       child: Container(
                                         padding:
@@ -233,10 +235,9 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
                                           shape: BoxShape.circle,
                                         ),
                                         child: Icon(
-                                          controller.isPlaying
+                                          controller.isPlayingGeminiAudio
                                               ? Icons.stop
-                                              : Icons
-                                              .volume_up_rounded,
+                                              : Icons.volume_up_rounded,
                                           size: 32,
                                           color: Colors.orange,
                                         ),

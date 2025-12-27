@@ -40,6 +40,7 @@ dependencies:
   flutter_tts: ^4.2.3
   drop_down_list: ^2.1.0
   audioplayers: ^6.5.1
+  path_provider: ^2.1.5
 
 dev_dependencies:
   flutter_test:

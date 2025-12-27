@@ -2,6 +2,8 @@ import 'package:beelingual/app_UI/account/pageAccount.dart';
 import 'package:beelingual/app_UI/translation_UI/translation_Page.dart';
 import 'package:beelingual/app_UI/vocabulary_UI/Dictionary.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../component/vocabularyProvider.dart';
 import 'home_page.dart'; // Đừng quên import file home_page
 
 class home_navigation extends StatefulWidget {
@@ -43,7 +45,13 @@ class _home_navigationState extends State<home_navigation> {
         unselectedItemColor: Colors.brown.shade300,
         backgroundColor: const Color(0xFFFFE082),
         type: BottomNavigationBarType.fixed,
-        onTap: (i) => setState(() => _selectedIndex = i),
+        onTap: (i) {
+          setState(() => _selectedIndex = i);
+          if (i == 1) {
+            context.read<UserVocabularyProvider>().reloadVocab(context);
+          }
+        },
+
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: "Home"),
           BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: "Dictionary"),

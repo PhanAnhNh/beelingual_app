@@ -16,10 +16,8 @@ class TranslateController extends ChangeNotifier {
   }
 
   Future<void> _initTts() async {
-    // Chờ engine kết nối (đặc biệt quan trọng trên Android)
     await flutterTts.awaitSpeakCompletion(true);
 
-    // Nếu chạy trên iOS, cần cấu hình thêm để không bị ngắt âm thanh
     if (Platform.isIOS) {
       await flutterTts.setIosAudioCategory(
         IosTextToSpeechAudioCategory.playback,
@@ -121,8 +119,6 @@ class TranslateController extends ChangeNotifier {
 
   Future<void> _speak(String text, String langCode) async {
     if (text.isEmpty) return;
-
-    // Dừng mọi âm thanh đang phát trước đó để tránh chồng chéo
     await flutterTts.stop();
 
     await flutterTts.setLanguage(langCode);

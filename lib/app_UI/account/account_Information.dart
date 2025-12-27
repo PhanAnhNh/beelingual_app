@@ -260,8 +260,7 @@ class _AccountInformationState extends State<AccountInformation> {
             child: CircleAvatar(
               radius: 40,
               backgroundColor: Colors.grey[300],
-              backgroundImage: const AssetImage('assets/images/book_login.png'),
-              child: const Icon(Icons.person, size: 40, color: Colors.white),
+              backgroundImage: const AssetImage('assets/Images/logoBee.png'),
             ),
           ),
 

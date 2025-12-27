@@ -21,7 +21,7 @@ class StreakService {
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body); // Trả về { "current": X, "longest": Y }
+        return jsonDecode(response.body);
       } else {
         print("Lỗi lấy streak: ${response.body}");
         return {"current": 0, "longest": 0};

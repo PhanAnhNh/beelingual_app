@@ -45,38 +45,106 @@ class VocabularyCardScreen extends StatefulWidget {
 class _VocabularyCardScreenState extends State<VocabularyCardScreen> {
   List<Vocabulary> _vocabList = [];
   bool _isLoading = true;
+  bool _isLoadingNext = false;
   int _currentIndex = 0;
+  int _currentPage = 1;
+  int _totalVocabs = 0;
   final AudioPlayer _audioPlayer = AudioPlayer();
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _loadInitialWord();
   }
 
-  Future<void> _loadData() async {
+  // LOAD 2 TỪ ĐẦU TIÊN (để người dùng không phải đợi khi bấm Next lần đầu)
+  Future<void> _loadInitialWord() async {
     setState(() {
       _isLoading = true;
+      _currentPage = 1;
+      _vocabList.clear();
     });
 
-    final data = await fetchVocabulariesByTopic(
-        widget.topicId, widget.level, context);
+    final result = await fetchVocabulariesPaginated(
+      topicId: widget.topicId,
+      level: widget.level,
+      page: 1,
+      limit: 2,  // Load 2 từ thay vì 1
+      context: context,
+    );
 
     if (mounted) {
       setState(() {
-        _vocabList = data;
+        _vocabList = List<Vocabulary>.from(result['data']);
+        _totalVocabs = result['total'] ?? 0;
         _isLoading = false;
       });
 
       if (_vocabList.isNotEmpty) {
         _trackCurrentWord();
+        StreakService().updateStreak(context);
       }
-      // ------------------------
+    }
+  }
 
-      if (data.isNotEmpty) {
+  // LOAD TỪ TIẾP THEO (ON-DEMAND)
+  Future<void> _loadNextWord() async {
+    if (_isLoadingNext) return;
 
-        StreakService().updateStreak(context).then((_) {
+    setState(() => _isLoadingNext = true);
+
+    // Tính page dựa trên số từ đã load
+    // Page 1: từ 1-2, Page 2: từ 3, Page 3: từ 4...
+    final nextPage = _vocabList.length + 1; // Vì page 1 có 2 từ rồi
+    
+    final result = await fetchVocabulariesPaginated(
+      topicId: widget.topicId,
+      level: widget.level,
+      page: nextPage,
+      limit: 1,
+      context: context,
+    );
+
+    if (mounted) {
+      final newWords = result['data'] as List<Vocabulary>;
+      
+      if (newWords.isNotEmpty) {
+        setState(() {
+          _vocabList.add(newWords[0]);
+          _isLoadingNext = false;
         });
+      } else {
+        setState(() => _isLoadingNext = false);
+      }
+    }
+  }
+
+  // PREFETCH: Load trước từ tiếp theo (không cần setState)
+  Future<void> _prefetchNextWord() async {
+    // Chỉ prefetch nếu:
+    // 1. Chưa đang load
+    // 2. Chưa có từ tiếp theo trong list
+    // 3. Còn từ để load
+    if (_isLoadingNext || _vocabList.length >= _totalVocabs) return;
+
+    final nextPage = _vocabList.length + 1;
+    
+    final result = await fetchVocabulariesPaginated(
+      topicId: widget.topicId,
+      level: widget.level,
+      page: nextPage,
+      limit: 1,
+      context: context,
+    );
+
+    if (mounted) {
+      final newWords = result['data'] as List<Vocabulary>;
+      
+      if (newWords.isNotEmpty) {
+        setState(() {
+          _vocabList.add(newWords[0]);
+        });
+        print("📚 Prefetched word ${_vocabList.length}");
       }
     }
   }
@@ -100,13 +168,19 @@ class _VocabularyCardScreenState extends State<VocabularyCardScreen> {
     }
   }
 
-  Future<List<Vocabulary>> fetchVocabulariesByTopic(String topicId, String level, [BuildContext? context]) async {
-    final url = Uri.parse('$urlAPI/api/vocab?topic=$topicId&level=$level&limit=1000');
+  // HÀM MỚI: Fetch Vocabularies với Pagination (cho On-Demand Loading)
+  Future<Map<String, dynamic>> fetchVocabulariesPaginated({
+    required String topicId,
+    required String level,
+    required int page,
+    required int limit,
+    BuildContext? context,
+  }) async {
+    final url = Uri.parse('$urlAPI/api/vocab?topic=$topicId&level=$level&page=$page&limit=$limit');
     final session = SessionManager();
 
     try {
       String? token = await session.getAccessToken();
-      print("Token có giá trị: ${token != null && token.isNotEmpty}");
 
       var res = await http.get(
         url,
@@ -129,48 +203,35 @@ class _VocabularyCardScreenState extends State<VocabularyCardScreen> {
               'Authorization': 'Bearer $token',
             },
           );
-          // print("Retry Status: ${res.statusCode}");
-          // print("Retry Body: ${res.body}");
         } else {
           if (context != null && context.mounted) {
             session.logout(context);
           }
-          return [];
+          return {'total': 0, 'page': page, 'limit': limit, 'data': []};
         }
       }
 
       if (res.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = json.decode(res.body);
 
-        List<dynamic> listData;
+        List<dynamic> listData = jsonResponse['data'] ?? [];
+        final List<Vocabulary> vocabs = listData.map((item) => Vocabulary.fromJson(item)).toList();
 
-        if (jsonResponse.containsKey('data')) {
-          listData = jsonResponse['data'];
-        } else if (jsonResponse.containsKey('vocabularies')) {
-          listData = jsonResponse['vocabularies'];
-        } else if (jsonResponse.containsKey('items')) {
-          listData = jsonResponse['items'];
-        } else if (jsonResponse is List) {
-          // Trường hợp API trả về trực tiếp array
-          listData = jsonResponse as List;
-        } else {
-          print("⚠️ Không tìm thấy key 'data', 'vocabularies', hoặc 'items' trong response");
-          return [];
-        }
+        print("📚 Loaded ${vocabs.length} vocabulary (page $page)");
 
-        print("Số từ vựng tìm thấy: ${listData.length}");
-        if (listData.isNotEmpty) {
-          print("Từ vựng đầu tiên: ${listData[0]}");
-        }
-
-        return listData.map((item) => Vocabulary.fromJson(item)).toList();
+        return {
+          'total': jsonResponse['total'] ?? 0,
+          'page': jsonResponse['page'] ?? page,
+          'limit': jsonResponse['limit'] ?? limit,
+          'data': vocabs,
+        };
       } else {
         print("❌ Lỗi lấy vocab: ${res.statusCode} - ${res.body}");
-        return [];
+        return {'total': 0, 'page': page, 'limit': limit, 'data': []};
       }
     } catch (e) {
       print("❌ Exception fetchVocabularies: $e");
-      return [];
+      return {'total': 0, 'page': page, 'limit': limit, 'data': []};
     }
   }
 
@@ -209,12 +270,27 @@ class _VocabularyCardScreenState extends State<VocabularyCardScreen> {
   }
 
   void _nextCard() {
+    // Nếu đã có từ tiếp theo trong list
     if (_currentIndex < _vocabList.length - 1) {
       setState(() {
         _currentIndex++;
       });
       _trackCurrentWord();
-    } else {
+      
+      // PREFETCH: Load trước từ tiếp theo (nếu chưa có)
+      if (_currentIndex == _vocabList.length - 1 && _vocabList.length < _totalVocabs) {
+        _prefetchNextWord();
+      }
+    }
+    // Nếu chưa load hết tất cả từ vựng (case này không nên xảy ra nếu prefetch hoạt động tốt)
+    else if (_vocabList.length < _totalVocabs) {
+      // Hiển thị thông báo đang load (fallback)
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Đang tải từ tiếp theo..."), duration: Duration(seconds: 1)),
+      );
+    }
+    // Đã học hết
+    else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Chúc mừng! Bạn đã học hết từ vựng chủ đề này.")),
       );
@@ -252,9 +328,11 @@ class _VocabularyCardScreenState extends State<VocabularyCardScreen> {
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator()) // Hiển thị loading khi đang gọi API
+          ? const Center(child: CircularProgressIndicator())
           : _vocabList.isEmpty
           ? const Center(child: Text("Chưa có từ vựng nào cho chủ đề này."))
+          : _isLoadingNext
+          ? const Center(child: CircularProgressIndicator()) // Loading từ tiếp theo
           : _buildCardContent(),
     );
   }
@@ -404,11 +482,11 @@ class _VocabularyCardScreenState extends State<VocabularyCardScreen> {
             ),
           ),
 
-          // Hiển thị số trang: 1/10
+          // Hiển thị số trang: 1/10 (dựa trên tổng số từ vựng)
           Padding(
             padding: const EdgeInsets.only(bottom: 20),
             child: Text(
-              "${_currentIndex + 1} / ${_vocabList.length}",
+              "${_currentIndex + 1} / $_totalVocabs",
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
           ),
