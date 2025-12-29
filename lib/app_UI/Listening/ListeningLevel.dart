@@ -54,7 +54,7 @@ class _PageListeningLevelState extends State<PageListeningLevel> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Listening'),
+        title: Text('Listening Level',style: TextStyle(fontWeight: FontWeight.bold),),
         backgroundColor: Color(0xFFFFF176),
       ),
       body: Container(

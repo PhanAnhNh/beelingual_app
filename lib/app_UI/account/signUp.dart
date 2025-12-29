@@ -342,7 +342,6 @@ class _PageSignUpState extends State<PageSignUp> with SingleTickerProviderStateM
                       ),
                       const SizedBox(height: 20),
 
-                      // Sign Up button - Amber gradient
                       Container(
                         width: double.infinity,
                         height: 52,

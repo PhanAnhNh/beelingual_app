@@ -1,6 +1,6 @@
 import 'package:beelingual/component/messDialog.dart';
 import 'package:beelingual/connect_api/api_Streak.dart';
-import 'package:beelingual/controller/exercise_Controller.dart';
+import 'package:beelingual/controller/exerciseController.dart';
 import 'package:beelingual/model/model_exercise.dart';
 import 'package:flutter/material.dart';
 

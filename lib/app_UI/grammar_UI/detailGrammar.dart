@@ -1,4 +1,4 @@
-import 'package:beelingual/app_UI/grammar_UI/exercisesGrmList.dart';
+import 'package:beelingual/app_UI/grammar_UI/grammarExe.dart';
 import 'package:beelingual/connect_api/api_Streak.dart';
 import 'package:beelingual/controller/grammar.dart';
 import 'package:beelingual/model/model_grammar.dart';
@@ -34,15 +34,11 @@ class _PageGrammarState extends State<PageGrammar> {
     _futureGrammar = fetchAllGrammarByCategory(widget.categoryId);
 
     _futureGrammar.then((data) {
-      // Kiểm tra nếu màn hình còn hiển thị và có dữ liệu thì mới update streak
       if (mounted && data.isNotEmpty) {
         StreakService().updateStreak(context).then((_) {
-          // Có thể print log nếu muốn kiểm tra
-          // print("Đã cập nhật streak ngữ pháp");
         });
       }
     }).catchError((error) {
-      // Xử lý lỗi nếu cần, hoặc bỏ qua để không ảnh hưởng luồng chính
       print("Lỗi khi tải Grammar để tính streak: $error");
     });
     // ------------------------------------
@@ -80,16 +76,20 @@ class _PageGrammarState extends State<PageGrammar> {
           tenseList.sort((a, b) => (a.createdAt ?? DateTime.now())
               .compareTo(b.createdAt ?? DateTime.now()));
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(20),
-            itemCount: tenseList.length,
-            itemBuilder: (context, index) {
-              final grammar = tenseList[index];
-              final gradient =
-              cardGradients[index % cardGradients.length];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 30),
+            child: ListView.builder(
+              padding: const EdgeInsets.all(20),
+              itemCount: tenseList.length,
+              itemBuilder: (context, index) {
+                final grammar = tenseList[index];
+                final gradient =
+                cardGradients[index % cardGradients.length];
 
-              return _grammarCard(grammar, index, gradient);
-            },
+                return _grammarCard(grammar, index, gradient);
+              },
+
+            ),
           );
         },
       ),
@@ -122,7 +122,6 @@ class _PageGrammarState extends State<PageGrammar> {
         ),
         child: Row(
           children: [
-            /// 🔢 Index
             Container(
               width: 54,
               height: 54,
@@ -141,8 +140,6 @@ class _PageGrammarState extends State<PageGrammar> {
               ),
             ),
             const SizedBox(width: 16),
-
-            /// 📘 Content
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -165,7 +162,6 @@ class _PageGrammarState extends State<PageGrammar> {
                 ],
               ),
             ),
-
             const Icon(Icons.arrow_forward_ios, color: Colors.white),
           ],
         ),
@@ -218,7 +214,6 @@ class PageGrammarDetail extends StatelessWidget {
 
             const SizedBox(height: 30),
 
-            /// 🚀 CTA
             SizedBox(
               width: double.infinity,
               height: 56,
@@ -248,6 +243,7 @@ class PageGrammarDetail extends StatelessWidget {
                 },
               ),
             ),
+            const SizedBox(height: 40),
           ],
         ),
       ),

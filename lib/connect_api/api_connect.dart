@@ -202,8 +202,6 @@ class SessionManager {
 }
 
 Future<Map<String, dynamic>?> fetchUserProfile(BuildContext context) async {
-  // 1. Kiểm tra lại đường dẫn này với Backend của bạn.
-
   final url = Uri.parse('$urlAPI/api/profile');
   final session = SessionManager();
 
@@ -220,7 +218,6 @@ Future<Map<String, dynamic>?> fetchUserProfile(BuildContext context) async {
 
     print("Profile Status Code: ${res.statusCode}");
     print("Profile Body: ${res.body}");
-    // Xử lý hết hạn token (401)
     if (res.statusCode == 401) {
       print("Token hết hạn, đang thử refresh...");
       bool refreshed = await session.refreshAccessToken();
@@ -251,6 +248,7 @@ Future<Map<String, dynamic>?> fetchUserProfile(BuildContext context) async {
   }
   return null;
 }
+
 Future<List<Topic>> fetchTopics([BuildContext? context]) async {
   final url = Uri.parse('$urlAPI/api/topics');
   final session = SessionManager();
@@ -294,19 +292,14 @@ Future<List<Topic>> fetchTopics([BuildContext? context]) async {
       final dynamic decoded = json.decode(res.body);
 
       List<dynamic> listJson;
-
-      // ⚠️ XỬ LÝ CẢ 2 TRƯỜNG HỢP:
       if (decoded is Map<String, dynamic>) {
-        // Trường hợp 1: Có cấu trúc { data: [...] }
         if (decoded.containsKey('data')) {
           listJson = decoded['data'];
         } else {
-          // Nếu không có key 'data', có thể toàn bộ response là array?
           print("API trả về Map nhưng không có key 'data'");
           return [];
         }
       } else if (decoded is List) {
-        // Trường hợp 2: API trả về trực tiếp mảng []
         listJson = decoded;
       } else {
         print("API trả về kiểu dữ liệu không xác định: ${decoded.runtimeType}");
@@ -324,7 +317,6 @@ Future<List<Topic>> fetchTopics([BuildContext? context]) async {
   }
 }
 
-// HÀM MỚI: Fetch Topics với Pagination (cho Lazy Loading)
 Future<Map<String, dynamic>> fetchTopicsPaginated({
   required int page,
   required int limit,
@@ -344,7 +336,6 @@ Future<Map<String, dynamic>> fetchTopicsPaginated({
       },
     );
 
-    // Xử lý token hết hạn (401)
     if (res.statusCode == 401) {
       print("Token hết hạn (401). Đang thử gia hạn...");
       final refreshSuccess = await session.refreshAccessToken();
@@ -395,9 +386,6 @@ Future<Map<String, dynamic>> fetchTopicsPaginated({
 }
 
 Future<List<Vocabulary>> fetchVocabulariesByTopic(String topicId, String level, [BuildContext? context]) async {
-  // LƯU Ý: Kiểm tra lại đường dẫn API của bạn.
-  // Ví dụ: /api/vocabularies?topicId=... hoặc /api/topics/:id/vocabularies
-  // Dựa vào JSON Postman bạn gửi, mình đoán endpoint lọc theo query param
   final url = Uri.parse('$urlAPI/api/vocab?topic=$topicId&level=$level&limit=1000');
 
   final session = SessionManager();
@@ -413,7 +401,6 @@ Future<List<Vocabulary>> fetchVocabulariesByTopic(String topicId, String level, 
       },
     );
 
-    // Xử lý hết hạn token (401)
     if (res.statusCode == 401) {
       print("Token hết hạn khi lấy từ vựng. Đang refresh...");
       final refreshSuccess = await session.refreshAccessToken();
@@ -437,7 +424,6 @@ Future<List<Vocabulary>> fetchVocabulariesByTopic(String topicId, String level, 
 
     if (res.statusCode == 200) {
       final Map<String, dynamic> jsonResponse = json.decode(res.body);
-      // Dựa vào JSON Postman: data nằm trong key "data"
       final List<dynamic> listData = jsonResponse['data'];
 
       return listData.map((item) => Vocabulary.fromJson(item)).toList();
@@ -452,24 +438,20 @@ Future<List<Vocabulary>> fetchVocabulariesByTopic(String topicId, String level, 
 }
 
 Future<bool> addVocabularyToDictionary(String vocabularyId, BuildContext context) async {
-  // ⚠️ THAY ĐỔI ENDPOINT NÀY NẾU BACKEND CỦA BẠN KHÁC
   final url = Uri.parse('$urlAPI/api/user-vocabulary/add');
   final session = SessionManager();
 
   try {
     String? token = await session.getAccessToken();
-
-    // 1. Gửi yêu cầu POST với ID từ vựng
     var res = await http.post(
       url,
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-      body: jsonEncode({'vocabularyId': vocabularyId}), // Gửi ID của từ vựng
+      body: jsonEncode({'vocabularyId': vocabularyId}),
     );
 
-    // 2. Xử lý hết hạn token (401)
     if (res.statusCode == 401) {
       bool refreshed = await session.refreshAccessToken();
       if (refreshed) {
@@ -484,24 +466,18 @@ Future<bool> addVocabularyToDictionary(String vocabularyId, BuildContext context
           body: jsonEncode({'vocabularyId': vocabularyId}),
         );
       } else {
-        // Nếu không refresh được, thoát khỏi màn hình
         if (context.mounted) session.logout(context);
         return false;
       }
     }
 
-    // 3. Xử lý kết quả
     if (res.statusCode == 200) {
-      // 200: Thành công (đã thêm/đã tồn tại)
-
-      // ✨ THAY ĐỔI: Tự động cập nhật Provider sau khi thêm thành công
       if (context.mounted) {
         Provider.of<UserVocabularyProvider>(context, listen: false).reloadVocab(context);
       }
 
       return true;
     } else if (res.statusCode == 400) {
-      // Xử lý lỗi validation (ví dụ: thiếu ID)
       final errorData = jsonDecode(res.body);
       print("Lỗi API (400): ${errorData['message']}");
     } else {
@@ -514,7 +490,6 @@ Future<bool> addVocabularyToDictionary(String vocabularyId, BuildContext context
 }
 
 Future<List<UserVocabularyItem>> fetchUserDictionary([BuildContext? context]) async {
-  // ⚠️ THAY ĐỔI ENDPOINT NÀY NẾU BACKEND CỦA BẠN KHÁC
   final url = Uri.parse('$urlAPI/api/user-vocabulary');
   final session = SessionManager();
 
@@ -528,7 +503,6 @@ Future<List<UserVocabularyItem>> fetchUserDictionary([BuildContext? context]) as
       },
     );
 
-    // Xử lý 401 và Refresh Token (giống như các hàm fetch khác của bạn)
     if (res.statusCode == 401) {
       final refreshSuccess = await session.refreshAccessToken();
       if (refreshSuccess) {
@@ -556,7 +530,6 @@ Future<List<UserVocabularyItem>> fetchUserDictionary([BuildContext? context]) as
 }
 
 Future<bool> deleteVocabularyFromDictionary(String userVocabId, BuildContext context) async {
-  // ⚠️ THAY ĐỔI ENDPOINT NẾU BACKEND CỦA BẠN KHÁC (DELETE /api/user-vocabulary/:id)
   final url = Uri.parse('$urlAPI/api/user-vocabulary/$userVocabId');
   final session = SessionManager();
 
@@ -571,7 +544,6 @@ Future<bool> deleteVocabularyFromDictionary(String userVocabId, BuildContext con
       },
     );
 
-    // Xử lý 401 và Refresh Token (Tương tự các hàm khác)
     if (res.statusCode == 401) {
       bool refreshed = await session.refreshAccessToken();
       if (refreshed) {
@@ -598,7 +570,7 @@ Future<bool> deleteVocabularyFromDictionary(String userVocabId, BuildContext con
 Future<bool> updateUserInfo({
   required String fullName,
   required String email,
-  required String level, // Tên tham số đã đổi
+  required String level,
   required BuildContext context,
 }) async {
 
@@ -614,9 +586,9 @@ Future<bool> updateUserInfo({
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode({
-        'fullname': fullName, // Chỉnh sửa
-        'email': email,       // Chỉnh sửa
-        'level': level,       // Giữ nguyên (nếu API yêu cầu)
+        'fullname': fullName,
+        'email': email,
+        'level': level,
       }),
     );
 
@@ -633,10 +605,7 @@ Future<bool> updateUserInfo({
     if (res.statusCode == 200) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Cập nhật thông tin thành công!")));
-
-      // ✨ THAY ĐỔI: KÍCH HOẠT CẬP NHẬT TÊN NGƯỜI DÙNG ✨
       if (context.mounted) {
-        // Gọi Provider để cập nhật tên người dùng ngay lập tức
         Provider.of<UserProfileProvider>(context, listen: false).updateFullname(fullName);
       }
 
@@ -651,19 +620,11 @@ Future<bool> updateUserInfo({
 
 
 }
-Future<Map<String, dynamic>> changePasswordAPI(
-    String currentPassword, String newPassword, BuildContext context) async {
-
-  // 1. Lấy URL (Lưu ý: kiểm tra kỹ prefix đường dẫn router của bạn, ví dụ: /api/user/change-password)
+Future<Map<String, dynamic>> changePasswordAPI(String currentPassword, String newPassword, BuildContext context) async {
   final url = Uri.parse('$urlAPI/api/change-password');
-
   final session = SessionManager();
-
   try {
-    // 2. Lấy token
     String? token = await session.getAccessToken();
-
-    // 3. Gọi API method PUT
     final response = await http.put(
       url,
       headers: {
@@ -675,19 +636,13 @@ Future<Map<String, dynamic>> changePasswordAPI(
         'newPassword': newPassword,
       }),
     );
-
-    // 4. Xử lý phản hồi
     final data = jsonDecode(response.body);
 
     if (response.statusCode == 200) {
-      // Thành công
       return {'success': true, 'message': data['message'] ?? 'Đổi mật khẩu thành công'};
     } else if (response.statusCode == 401) {
-      // Token hết hạn -> Xử lý refresh token hoặc logout ở đây (tùy logic app bạn)
-      // Ví dụ đơn giản:
       return {'success': false, 'message': 'Phiên đăng nhập hết hạn'};
     } else {
-      // Lỗi từ backend (400, 404...)
       return {'success': false, 'message': data['message'] ?? 'Lỗi không xác định'};
     }
   } catch (e) {

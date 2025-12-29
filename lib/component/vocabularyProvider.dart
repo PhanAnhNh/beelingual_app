@@ -15,6 +15,12 @@ class UserVocabularyProvider extends ChangeNotifier {
     fetchVocab(context);
   }
 
+  void clear() {
+    _vocabList.clear();
+    _isLoading = false;
+    notifyListeners();
+  }
+
   // --- Hàm tải dữ liệu API ---
   Future<void> fetchVocab(BuildContext context) async {
     if (_isLoading) return; // Tránh tải nhiều lần
@@ -32,13 +38,10 @@ class UserVocabularyProvider extends ChangeNotifier {
       // Xử lý lỗi nếu cần
     } finally {
       _isLoading = false;
-      notifyListeners(); // Báo hiệu kết thúc tải và cập nhật UI
+      notifyListeners();
     }
   }
 
-  // --- Hàm CẬP NHẬT TỨC THỜI (được gọi từ màn hình khác) ---
-  // Khi bạn thêm/xóa từ ở màn hình khác, chỉ cần gọi hàm này:
-  // Provider.of<UserVocabularyProvider>(context, listen: false).reloadVocab();
   Future<void> reloadVocab(BuildContext context) async {
     // Chỉ cần gọi lại hàm tải
     await fetchVocab(context);

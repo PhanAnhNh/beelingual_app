@@ -1,6 +1,6 @@
 import 'package:beelingual/component/messDialog.dart';
 import 'package:beelingual/connect_api/api_Streak.dart';
-import 'package:beelingual/controller/exercise_Controller.dart';
+import 'package:beelingual/controller/exerciseController.dart';
 import 'package:beelingual/model/model_exercise.dart';
 import 'package:flutter/material.dart';
 
@@ -123,8 +123,9 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
 
           // ===== INIT FILL IN =====
           if (item.type == "fill_in_blank") {
-            answerController.text =
-                controller.userAnswers[item.id] ?? "";
+            if (!controller.isAnswered()) {
+              answerController.clear();
+            }
           }
 
           // ===== INIT CLOZE TEST =====
@@ -141,11 +142,9 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
               );
             }
 
-            if (controller.userAnswers.containsKey(item.id)) {
-              final saved =
-              controller.userAnswers[item.id]!.split("/");
-              for (int i = 0; i < saved.length; i++) {
-                clozeControllers[i].text = saved[i];
+            if (!controller.isAnswered()) {
+              for (final c in clozeControllers) {
+                c.clear();
               }
             }
           }
@@ -435,8 +434,7 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
                           setState(() {
                             selectedOption = null;
                             answerController.clear();
-                            for (final c
-                            in clozeControllers) {
+                            for (final c in clozeControllers) {
                               c.clear();
                             }
                           });

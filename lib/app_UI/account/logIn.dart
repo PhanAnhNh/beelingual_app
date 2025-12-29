@@ -1,9 +1,14 @@
 import 'package:beelingual/app_UI/account/signUp.dart';
-import 'package:beelingual/app_UI/home_UI/bottom_navigation.dart';
+import 'package:beelingual/app_UI/home_UI/bottomNavigation.dart';
 import 'package:beelingual/component/messDialog.dart';
 import 'package:beelingual/connect_api/api_connect.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../component/profileProvider.dart';
+import '../../component/progressProvider.dart';
+import '../../component/vocabularyProvider.dart';
 
 class PageLogIn extends StatefulWidget {
   const PageLogIn({super.key});
@@ -199,7 +204,6 @@ class _PageLogInState extends State<PageLogIn> {
     );
   }
 
-  /// 🔐 HANDLE LOGIN (Đã sửa)
   Future<void> _handleLogin() async {
     // Ẩn bàn phím trước khi xử lý
     FocusManager.instance.primaryFocus?.unfocus();
@@ -220,7 +224,6 @@ class _PageLogInState extends State<PageLogIn> {
     try {
       final token = await session.login(username: usernameText, password: passwordText);
 
-      // 3. Quan trọng: Kiểm tra mounted sau khi await
       if (!mounted) return;
 
       if (token != null) {
@@ -231,10 +234,20 @@ class _PageLogInState extends State<PageLogIn> {
         // Kiểm tra mounted lần nữa trước khi navigate
         if (!mounted) return;
 
+        context.read<UserProfileProvider>().clear();
+        context.read<UserVocabularyProvider>().clear();
+        context.read<UserProgressProvider>().clear();
+
+// Load profile mới
+        await context.read<UserProfileProvider>().fetchProfile(context);
+
+// Điều hướng sang home
+        if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const home_navigation()),
         );
+
       } else {
         if (!mounted) return;
         showErrorDialog(context, "Thông báo","Đăng nhập thất bại!");
