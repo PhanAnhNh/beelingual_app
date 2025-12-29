@@ -205,7 +205,6 @@ class _PageLogInState extends State<PageLogIn> {
   }
 
   Future<void> _handleLogin() async {
-    // Ẩn bàn phím trước khi xử lý
     FocusManager.instance.primaryFocus?.unfocus();
 
     String usernameText = username.text.trim();
@@ -231,17 +230,13 @@ class _PageLogInState extends State<PageLogIn> {
         await prefs.setString('accessToken', token['accessToken']!);
         await prefs.setString('refreshToken', token['refreshToken']!);
 
-        // Kiểm tra mounted lần nữa trước khi navigate
         if (!mounted) return;
 
         context.read<UserProfileProvider>().clear();
         context.read<UserVocabularyProvider>().clear();
         context.read<UserProgressProvider>().clear();
-
-// Load profile mới
         await context.read<UserProfileProvider>().fetchProfile(context);
 
-// Điều hướng sang home
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
@@ -250,14 +245,13 @@ class _PageLogInState extends State<PageLogIn> {
 
       } else {
         if (!mounted) return;
-        showErrorDialog(context, "Thông báo","Đăng nhập thất bại!");
+        showErrorDialog(context, "Thông báo","Username hoặc Password không đúng");
       }
     } catch (e) {
       if (mounted) {
         showErrorDialog(context, "Thông báo","Đã có lỗi xảy ra: $e");
       }
     } finally {
-      // 4. Tắt loading dù thành công hay thất bại
       if (mounted) {
         setState(() {
           isLoading = false;
@@ -266,7 +260,6 @@ class _PageLogInState extends State<PageLogIn> {
     }
   }
 
-  /// 🧩 INPUT FIELD
   Widget _inputField({
     required TextEditingController controller,
     required String hint,

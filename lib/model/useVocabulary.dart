@@ -7,6 +7,7 @@ class UserVocabularyItem {
   final String imageUrl;
   final String status;
   final String userVocabId;
+  // final String audioUrl;
 
   UserVocabularyItem({
     required this.id,
@@ -17,6 +18,7 @@ class UserVocabularyItem {
     required this.imageUrl,
     required this.status,
     required this.userVocabId,
+    // required this.audioUrl,
   });
 
   factory UserVocabularyItem.fromJson(Map<String, dynamic> json) {
@@ -29,6 +31,7 @@ class UserVocabularyItem {
       imageUrl: json['imageUrl'] ?? '',
       status: json['status'] ?? 'learning',
       userVocabId: json['userVocabId'] ?? '',
+      // audioUrl: json['audioUrl'] ?? '',
     );
   }
 }

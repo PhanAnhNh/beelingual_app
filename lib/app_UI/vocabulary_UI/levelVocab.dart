@@ -23,10 +23,7 @@ class LevelPage extends StatefulWidget {
 }
 
 class _LevelPageState extends State<LevelPage> {
-  /// 📊 Level codes
   final List<String> levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
-
-  /// 🏷️ Level names tương ứng
   final Map<String, String> levelNames = {
     'A1': 'Beginner',
     'A2': 'Elementary',

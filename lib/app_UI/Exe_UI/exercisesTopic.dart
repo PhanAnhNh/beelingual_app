@@ -119,7 +119,12 @@ class _PageTopicExercisesListState extends State<PageTopicExercisesList> {
       )
           : ListView.builder(
         controller: _scrollController,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: EdgeInsets.fromLTRB(
+          16,
+          8,
+          16,
+          50, // 👈 khoảng trắng bên dưới
+        ),
         itemCount: _topics.length + (_hasMore ? 1 : 0),
         itemBuilder: (context, index) {
           if (index >= _topics.length) {
@@ -193,7 +198,6 @@ class _PageTopicExercisesListState extends State<PageTopicExercisesList> {
                     padding: const EdgeInsets.all(14.0),
                     child: Row(
                       children: [
-                        // Image with gradient overlay
                         Stack(
                           children: [
                             ClipRRect(
@@ -312,25 +316,6 @@ class _PageTopicExercisesListState extends State<PageTopicExercisesList> {
                               ),
 
                               const SizedBox(height: 8),
-
-                              // Progress indicator (placeholder)
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.assignment_outlined,
-                                    size: 16,
-                                    color: Colors.grey[600],
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'Bắt đầu luyện tập',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                ],
-                              ),
                             ],
                           ),
                         ),

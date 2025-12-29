@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:beelingual/component/messDialog.dart';
 import 'package:beelingual/connect_api/api_Progress.dart';
 import 'package:beelingual/connect_api/api_Streak.dart';
 import 'package:beelingual/connect_api/api_connect.dart';
@@ -57,7 +58,6 @@ class _VocabularyCardScreenState extends State<VocabularyCardScreen> {
     _loadInitialWord();
   }
 
-  // LOAD 2 TỪ ĐẦU TIÊN (để người dùng không phải đợi khi bấm Next lần đầu)
   Future<void> _loadInitialWord() async {
     setState(() {
       _isLoading = true;
@@ -69,7 +69,7 @@ class _VocabularyCardScreenState extends State<VocabularyCardScreen> {
       topicId: widget.topicId,
       level: widget.level,
       page: 1,
-      limit: 2,  // Load 2 từ thay vì 1
+      limit: 2,
       context: context,
     );
 
@@ -87,44 +87,7 @@ class _VocabularyCardScreenState extends State<VocabularyCardScreen> {
     }
   }
 
-  // LOAD TỪ TIẾP THEO (ON-DEMAND)
-  Future<void> _loadNextWord() async {
-    if (_isLoadingNext) return;
-
-    setState(() => _isLoadingNext = true);
-
-    // Tính page dựa trên số từ đã load
-    // Page 1: từ 1-2, Page 2: từ 3, Page 3: từ 4...
-    final nextPage = _vocabList.length + 1; // Vì page 1 có 2 từ rồi
-    
-    final result = await fetchVocabulariesPaginated(
-      topicId: widget.topicId,
-      level: widget.level,
-      page: nextPage,
-      limit: 1,
-      context: context,
-    );
-
-    if (mounted) {
-      final newWords = result['data'] as List<Vocabulary>;
-      
-      if (newWords.isNotEmpty) {
-        setState(() {
-          _vocabList.add(newWords[0]);
-          _isLoadingNext = false;
-        });
-      } else {
-        setState(() => _isLoadingNext = false);
-      }
-    }
-  }
-
-  // PREFETCH: Load trước từ tiếp theo (không cần setState)
   Future<void> _prefetchNextWord() async {
-    // Chỉ prefetch nếu:
-    // 1. Chưa đang load
-    // 2. Chưa có từ tiếp theo trong list
-    // 3. Còn từ để load
     if (_isLoadingNext || _vocabList.length >= _totalVocabs) return;
 
     final nextPage = _vocabList.length + 1;
@@ -148,27 +111,7 @@ class _VocabularyCardScreenState extends State<VocabularyCardScreen> {
       }
     }
   }
-  Future<void> _handleAddToDictionary(String vocabularyId, String word) async {
-    final success = await addVocabularyToDictionary(vocabularyId, context);
 
-    if (mounted) {
-      // Hiển thị thông báo (SnackBar)
-      ScaffoldMessenger.of(context).hideCurrentSnackBar(); // Ẩn thông báo cũ
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success
-                ? "✅ Đã thêm '$word' vào từ điển của bạn."
-                : "❌ Lỗi: Không thể thêm từ vựng. Vui lòng thử lại.",
-          ),
-          backgroundColor: success ? Colors.green : Colors.red,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
-  // HÀM MỚI: Fetch Vocabularies với Pagination (cho On-Demand Loading)
   Future<Map<String, dynamic>> fetchVocabulariesPaginated({
     required String topicId,
     required String level,
@@ -269,32 +212,24 @@ class _VocabularyCardScreenState extends State<VocabularyCardScreen> {
     super.dispose();
   }
 
-  void _nextCard() {
-    // Nếu đã có từ tiếp theo trong list
+  void _nextCard() async {
     if (_currentIndex < _vocabList.length - 1) {
       setState(() {
         _currentIndex++;
       });
       _trackCurrentWord();
-      
-      // PREFETCH: Load trước từ tiếp theo (nếu chưa có)
       if (_currentIndex == _vocabList.length - 1 && _vocabList.length < _totalVocabs) {
         _prefetchNextWord();
       }
     }
-    // Nếu chưa load hết tất cả từ vựng (case này không nên xảy ra nếu prefetch hoạt động tốt)
     else if (_vocabList.length < _totalVocabs) {
-      // Hiển thị thông báo đang load (fallback)
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Đang tải từ tiếp theo..."), duration: Duration(seconds: 1)),
       );
     }
-    // Đã học hết
     else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Chúc mừng! Bạn đã học hết từ vựng chủ đề này.")),
-      );
-
+      await showSuccessDialog(context, "Chúc mừng", "Bạn đã học hết từ vựng của chủ đề này");
+      Navigator.of(context).pop();
       Provider.of<UserProgressProvider>(context, listen: false)
           .fetchProgress(context);
     }
@@ -305,7 +240,7 @@ class _VocabularyCardScreenState extends State<VocabularyCardScreen> {
       setState(() {
         _currentIndex--;
       });
-      _trackCurrentWord(); // <--- Gọi API khi quay lại (tùy chọn)
+      _trackCurrentWord();
     }
   }
 
@@ -314,7 +249,7 @@ class _VocabularyCardScreenState extends State<VocabularyCardScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFFDF5D3),
       appBar: AppBar(
-        title: Text(widget.topicName), // Tên Topic
+        title: Text(widget.topicName),
         backgroundColor: const Color(0xFFFFE474),
         centerTitle: true,
         leading: IconButton(
@@ -338,7 +273,7 @@ class _VocabularyCardScreenState extends State<VocabularyCardScreen> {
   }
 
   Widget _buildCardContent() {
-    final vocab = _vocabList[_currentIndex]; // Lấy dữ liệu động tại index hiện tại
+    final vocab = _vocabList[_currentIndex];
 
     return SafeArea(
       child: Column(
@@ -475,7 +410,7 @@ class _VocabularyCardScreenState extends State<VocabularyCardScreen> {
                         ],
                       ),
                     ),
-
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),

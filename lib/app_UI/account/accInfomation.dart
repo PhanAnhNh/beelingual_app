@@ -30,6 +30,7 @@ class _AccountInformationState extends State<AccountInformation> with SingleTick
   String _currentLevel = "";
   String _xp = "";
   String _gems = "";
+  String _role ="";
 
   @override
   void initState() {
@@ -134,12 +135,14 @@ class _AccountInformationState extends State<AccountInformation> with SingleTick
     _levelController.text = user.level;
     _currentLevel = user.level;
     _currentUsername = json['username']?.toString() ?? user.fullname;
+    _role = json['role']?.toString() ?? user.role;
     _xp = "${json['xp']?.toString() ?? '0'} XP";
     _gems = "${json['gems']?.toString() ?? '0'} Gems";
   }
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       extendBodyBehindAppBar: true,
@@ -290,6 +293,7 @@ class _AccountInformationState extends State<AccountInformation> with SingleTick
   }
 
   Widget _buildProfileCard(User user) {
+    bool isStudent = _role.toLowerCase() == 'student';
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -345,7 +349,9 @@ class _AccountInformationState extends State<AccountInformation> with SingleTick
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Colors.red[400]!, Colors.red[600]!],
+                colors: isStudent
+                    ? [Colors.green[400]!, Colors.green[600]!]
+                    : [Colors.red[400]!, Colors.red[600]!],
               ),
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
@@ -359,10 +365,10 @@ class _AccountInformationState extends State<AccountInformation> with SingleTick
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.workspace_premium, color: Colors.white, size: 16),
-                const SizedBox(width: 6),
-                const Text(
-                  "ADMIN",
+                Icon(Icons.workspace_premium, color: Colors.white, size: 16),
+                SizedBox(width: 6),
+                Text(
+                  _role,
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,

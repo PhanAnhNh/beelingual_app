@@ -1,9 +1,8 @@
 import 'dart:async';
 import 'package:beelingual/component/vocabularyProvider.dart';
-import 'package:beelingual/controller/vocabTtsController.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
+import 'package:audioplayers/audioplayers.dart';
 import '../../controller/dictionaryController.dart';
 import '../../model/useVocabulary.dart';
 
@@ -16,7 +15,6 @@ class VocabularyLearnedScreen extends StatefulWidget {
 
 class _VocabularyLearnedScreenState extends State<VocabularyLearnedScreen>
     with SingleTickerProviderStateMixin {
-  final VocabularyTTSController _ttsController = VocabularyTTSController();
   final DictionaryController _dictController = DictionaryController();
   late AnimationController _animationController;
 
@@ -220,7 +218,6 @@ class _VocabularyLearnedScreenState extends State<VocabularyLearnedScreen>
     );
   }
 
-  // Empty state
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -246,6 +243,7 @@ class _VocabularyLearnedScreenState extends State<VocabularyLearnedScreen>
   // Vocabulary card
   Widget _buildVocabularyCard(
       BuildContext context, UserVocabularyItem vocab, bool isSelected, int index) {
+    final AudioPlayer _audioPlayer = AudioPlayer();
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -301,10 +299,15 @@ class _VocabularyLearnedScreenState extends State<VocabularyLearnedScreen>
                   ],
                 ),
               ),
-              IconButton(
-                onPressed: () => _ttsController.speak(vocab.word),
-                icon: const Icon(Icons.volume_up_rounded, color: darkHoney),
-              ),
+              // IconButton(
+              //   onPressed: () => {
+              //     _audioPlayer.play(
+              //       UrlSource(vocab.audioUrl),
+              //     ),
+              //     print('Link âm thanh: '+vocab.audioUrl)
+              //   },
+              //   icon: const Icon(Icons.volume_up_rounded, color: darkHoney),
+              // ),
             ],
           ),
         ),
