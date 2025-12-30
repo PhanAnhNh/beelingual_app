@@ -5,7 +5,6 @@ import 'package:beelingual_app/app_UI/home_UI/appTheme.dart';
 import 'package:beelingual_app/connect_api/api_connect.dart';
 import 'package:beelingual_app/app_UI/vocabulary_UI/topic_Vocab.dart';
 import 'package:beelingual_app/app_UI/grammar_UI/grammarList.dart';
-import 'package:beelingual_app/app_UI/translation_UI/translation_Page.dart';
 import 'package:beelingual_app/app_UI/Listening/ListeningLevel.dart';
 
 class HomePage extends StatefulWidget {
@@ -52,140 +51,140 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
-        children: [Container(
-          height: double.infinity,
-          width: double.infinity,
-          decoration: const BoxDecoration(
-            gradient: AppTheme.bgGradient,
-          ),
-        ),
-
-          SafeArea(
-            child: RefreshIndicator(
-              onRefresh: _handleRefresh,
-              notificationPredicate: (notification) {
-                return notification.depth == 0;
-              },
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 10),
-
-                    /// HEADER
-                    Text(
-                      "Good day 👋",
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: AppTheme.textDark.withOpacity(0.7),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      "What will you learn today?",
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w900,
-                        color: AppTheme.textDark,
-                      ),
-                    ),
-
-                    const SizedBox(height: 28),
-
-                    /// GRID MENU
-                    GridView.count(
-                      crossAxisCount: 2,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      crossAxisSpacing: 18,
-                      mainAxisSpacing: 18,
-                      childAspectRatio: 0.95,
-                      children: [
-                        _menuCard(
-                          "Vocabulary",
-                          Icons.menu_book_rounded,
-                          AppTheme.cardGradients[0],
-                              () => Navigator.of(context, rootNavigator: true).push(
-                            MaterialPageRoute(
-                                builder: (_) =>
-                                const LearningTopicsScreen()),
-                          ),
-                        ),
-                        _menuCard(
-                          "Grammar",
-                          Icons.extension_rounded,
-                          AppTheme.cardGradients[1],
-                              () => Navigator.of(context, rootNavigator: true).push(
-                            MaterialPageRoute(
-                                builder: (_) =>
-                                const PageGrammarList()),
-                          ),
-                        ),
-                        _menuCard(
-                          "Exercises",
-                          Icons.language_rounded,
-                          AppTheme.cardGradients[2],
-                              () => Navigator.of(context, rootNavigator: true).push(
-                            MaterialPageRoute(
-                                builder: (_) =>
-                                const PageTopicExercisesList()),
-                          ),
-                        ),
-                        _menuCard(
-                          "Listening",
-                          Icons.headphones_rounded,
-                          AppTheme.cardGradients[3],
-                              () => Navigator.of(context, rootNavigator: true).push(
-                            MaterialPageRoute(
-                                builder: (_) =>
-                                    PageListeningLevel()),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 30),
-
-                    /// MOTIVATION
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            blurRadius: 20,
-                            color: Colors.black.withOpacity(0.08),
-                            offset: const Offset(0, 8),
-                          )
-                        ],
-                      ),
-                      child: Row(
-                        children: const [
-                          Icon(Icons.local_fire_department,
-                              color: Colors.orange, size: 40),
-                          SizedBox(width: 16),
-                          Expanded(
-                            child: Text(
-                              "Keep your streak!\nPractice every day 🔥",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          )
-                        ],
-                      ),
-                    )
-                  ],
-                ),
-              ),
+          children: [Container(
+            height: double.infinity,
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              gradient: AppTheme.bgGradient,
             ),
           ),
 
-    ]
+            SafeArea(
+              child: RefreshIndicator(
+                onRefresh: _handleRefresh,
+                notificationPredicate: (notification) {
+                  return notification.depth == 0;
+                },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 10),
+
+                      /// HEADER
+                      Text(
+                        "Good day 👋",
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: AppTheme.textDark.withOpacity(0.7),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        "What will you learn today?",
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w900,
+                          color: AppTheme.textDark,
+                        ),
+                      ),
+
+                      const SizedBox(height: 28),
+
+                      /// GRID MENU
+                      GridView.count(
+                        crossAxisCount: 2,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisSpacing: 18,
+                        mainAxisSpacing: 18,
+                        childAspectRatio: 0.95,
+                        children: [
+                          _menuCard(
+                            "Vocabulary",
+                            Icons.menu_book_rounded,
+                            AppTheme.cardGradients[0],
+                                () => Navigator.of(context, rootNavigator: true).push(
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                  const LearningTopicsScreen()),
+                            ),
+                          ),
+                          _menuCard(
+                            "Grammar",
+                            Icons.extension_rounded,
+                            AppTheme.cardGradients[1],
+                                () => Navigator.of(context, rootNavigator: true).push(
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                  const PageGrammarList()),
+                            ),
+                          ),
+                          _menuCard(
+                            "Exercises",
+                            Icons.language_rounded,
+                            AppTheme.cardGradients[2],
+                                () => Navigator.of(context, rootNavigator: true).push(
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                  const PageTopicExercisesList()),
+                            ),
+                          ),
+                          _menuCard(
+                            "Listening",
+                            Icons.headphones_rounded,
+                            AppTheme.cardGradients[3],
+                                () => Navigator.of(context, rootNavigator: true).push(
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      PageListeningLevel()),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 30),
+
+                      /// MOTIVATION
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              blurRadius: 20,
+                              color: Colors.black.withOpacity(0.08),
+                              offset: const Offset(0, 8),
+                            )
+                          ],
+                        ),
+                        child: Row(
+                          children: const [
+                            Icon(Icons.local_fire_department,
+                                color: Colors.orange, size: 40),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: Text(
+                                "Keep your streak!\nPractice every day 🔥",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            )
+                          ],
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          ]
       ),
     );
   }

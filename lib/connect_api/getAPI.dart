@@ -1,14 +1,14 @@
 import 'dart:convert';
 import 'dart:io'; // Để dùng HttpException
+import 'package:beelingual_app/connect_api/api_connect.dart';
 import 'package:http/http.dart' as http;
 import '../model/user.dart';
+import 'url.dart';
 
 class UserService {
-  static const String _baseUrl = 'https://english-app-mupk.onrender.com/api/admin';
-
   Future<List<User>> fetchUsers(String token) async {
     try {
-      final url = Uri.parse('$_baseUrl/users');
+      final url = Uri.parse('$urlAPI/users');
 
       final response = await http.get(
         url,

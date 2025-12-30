@@ -15,7 +15,7 @@ class LevelPage extends StatefulWidget {
     required this.topicId,
     required this.topicName,
     this.onProgressUpdated,
-    required this.topic
+    required this.topic,
   });
 
   @override
@@ -23,8 +23,20 @@ class LevelPage extends StatefulWidget {
 }
 
 class _LevelPageState extends State<LevelPage> {
+  /// 📊 Level codes
   final List<String> levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
+  /// 🏷️ Level names tương ứng
+  final Map<String, String> levelNames = {
+    'A1': 'Beginner',
+    'A2': 'Elementary',
+    'B1': 'Intermediate',
+    'B2': 'Upper-Intermediate',
+    'C1': 'Advanced',
+    'C2': 'Proficient',
+  };
+
+  /// 🎨 Gradient cho từng card
   final List<List<Color>> cardGradients = [
     [Color(0xFFFFC371), Color(0xFFFFA751)],
     [Color(0xFFB6F492), Color(0xFF338B93)],
@@ -97,8 +109,10 @@ class _LevelPageState extends State<LevelPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(progress.currentLevel,
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text(
+                progress.currentLevel,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
               Text('${widget.topic.progress}%'),
             ],
           ),
@@ -138,12 +152,12 @@ class _LevelPageState extends State<LevelPage> {
               blurRadius: 16,
               color: Colors.black.withOpacity(0.15),
               offset: const Offset(0, 8),
-            )
+            ),
           ],
         ),
         child: Row(
           children: [
-            /// 🔢 Number Box
+            /// 🔢 Index
             Container(
               width: 56,
               height: 56,
@@ -164,7 +178,7 @@ class _LevelPageState extends State<LevelPage> {
 
             const SizedBox(width: 16),
 
-            /// 📘 Text
+            /// 📘 Level info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -178,16 +192,13 @@ class _LevelPageState extends State<LevelPage> {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Row(
-                    children: const [
-                      Icon(Icons.star, size: 16, color: Colors.white),
-                      SizedBox(width: 6),
-                      Text(
-                        'Beginner',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ],
-                  )
+                  Text(
+                    levelNames[level] ?? '',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white.withOpacity(0.9),
+                    ),
+                  ),
                 ],
               ),
             ),

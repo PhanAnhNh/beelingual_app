@@ -1,10 +1,8 @@
-// beelingual_app/component/userProgressProvider.dart
 import 'package:beelingual_app/connect_api/api_Progress.dart';
 import 'package:flutter/material.dart';
-import 'package:beelingual_app/connect_api/api_connect.dart';
 
 class UserProgressProvider extends ChangeNotifier {
-  String _currentLevel = "Level 1"; // Hoặc Level A
+  String _currentLevel = "Level 1";
   double _topicProgressBarPercentage = 0.0;
   bool _isLoading = false;
 
@@ -13,7 +11,6 @@ class UserProgressProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
 
   UserProgressProvider(BuildContext context) {
-    // Khởi tạo và tải dữ liệu lần đầu
     Future.delayed(Duration.zero, () => fetchProgress(context, notifyOnStart: false));
   }
 
@@ -27,14 +24,7 @@ class UserProgressProvider extends ChangeNotifier {
       final progressData = await fetchUserProgress(context);
 
       if (progressData != null) {
-        // --- LOGIC MỚI: Chỉ lấy phần trăm ---
-
-        // Tiêu đề hiển thị (Thay cho "Level 1")
         _currentLevel = "Tổng quan";
-
-        // Lấy phần trăm (key trả về từ backend là 'percent')
-        // Lưu ý: Kiểm tra xem backend trả về key tên là 'percent' hay 'topicProgressBarPercentage'
-        // Nếu dùng code backend mới ở trên thì key là 'percent'
         var rawPercent = progressData['percent'];
 
         if (rawPercent is num) {
@@ -57,5 +47,12 @@ class UserProgressProvider extends ChangeNotifier {
   // Hàm được gọi khi có sự thay đổi (thêm từ, xóa từ)
   Future<void> reloadProgress(BuildContext context) async {
     await fetchProgress(context);
+  }
+
+  void clear() {
+    _currentLevel = "Level 1";
+    _topicProgressBarPercentage = 0.0;
+    _isLoading = false;
+    notifyListeners();
   }
 }

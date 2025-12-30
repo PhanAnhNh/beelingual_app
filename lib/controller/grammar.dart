@@ -2,8 +2,7 @@ import 'dart:convert';
 import 'package:beelingual_app/model/model_grammar.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-
-final urlAPI ='https://english-app-mupk.onrender.com';
+import '../connect_api/url.dart';
 
 Future<List<Category>> fetchAllCategory() async {
   final prefs = await SharedPreferences.getInstance();
@@ -46,43 +45,34 @@ Future<List<Grammar>> fetchAllGrammarByCategory(String categoryId) async {
     throw Exception('Token không tồn tại. Vui lòng đăng nhập.');
   }
 
-  int page = 1;
-  int totalPages = 1;
-  List<Grammar> allGrammar = [];
+  final url = Uri.parse('$urlAPI/api/grammar?categoryId=$categoryId');
 
-  do {
-    final url = Uri.parse('$urlAPI/api/grammar?page=$page&limit=10');
-    final response = await http.get(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+  final response = await http.get(
+    url,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    },
+  );
+
+  if (response.statusCode != 200) {
+    throw Exception(
+      'Không lấy được dữ liệu, status code: ${response.statusCode}',
     );
+  }
 
-    if (response.statusCode != 200) {
-      throw Exception('Không lấy được dữ liệu, status code: ${response.statusCode}');
-    }
+  final decoded = json.decode(response.body);
+  if (decoded is! Map<String, dynamic>) {
+    throw Exception('Dữ liệu trả về không đúng định dạng JSON object');
+  }
 
-    final decoded = json.decode(response.body);
-    if (decoded is! Map<String, dynamic>) {
-      throw Exception('Dữ liệu trả về không đúng định dạng JSON object');
-    }
-    final Map<String, dynamic> jsonData = decoded;
+  final dataList = decoded['data'];
+  if (dataList is! List) {
+    throw Exception('Dữ liệu "data" không tồn tại hoặc không phải List');
+  }
 
-    totalPages = jsonData['totalPages'] ?? 1;
-
-    final dataList = jsonData['data'];
-    if (dataList == null || dataList is! List) {
-      throw Exception('Dữ liệu "data" không tồn tại hoặc không phải List');
-    }
-
-    final grammarPage = dataList.map<Grammar>((item) => Grammar.fromJson(item)).toList();
-
-    allGrammar.addAll(grammarPage);
-    page++;
-  } while (page <= totalPages);
-
-  // Lọc theo categoryId
-  return allGrammar.where((g) => g.category == categoryId).toList();
+  return dataList
+      .map<Grammar>((item) => Grammar.fromJson(item))
+      .toList();
 }
+

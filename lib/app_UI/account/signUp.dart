@@ -196,8 +196,8 @@ class _PageSignUpState extends State<PageSignUp> with SingleTickerProviderStateM
                         controller: usernameController,
                         style: const TextStyle(fontSize: 15, color: textDark),
                         decoration: _buildInputDecoration(
-                          label: "Bee1234",
-                          hint: "",
+                          label: "Username",
+                          hint: "Bee1234",
                           icon: Icons.account_circle_outlined,
                           suffixIcon: Tooltip(
                             message:
@@ -342,7 +342,6 @@ class _PageSignUpState extends State<PageSignUp> with SingleTickerProviderStateM
                       ),
                       const SizedBox(height: 20),
 
-                      // Sign Up button - Amber gradient
                       Container(
                         width: double.infinity,
                         height: 52,

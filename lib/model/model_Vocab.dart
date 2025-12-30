@@ -2,7 +2,7 @@ class Vocabulary {
   final String id;
   final String word;
   final String meaning;
-  final String pronunciation; // Đây là IPA
+  final String pronunciation;
   final String type;
   final String topic;
   final String example;

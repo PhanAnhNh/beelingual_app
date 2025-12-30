@@ -1,8 +1,9 @@
+
 import 'package:beelingual_app/app_UI/account/ExchangePassword.dart';
 import 'package:beelingual_app/app_UI/account/account_Information.dart';
 import 'package:beelingual_app/component/profileProvider.dart';
-import 'package:flutter/material.dart';
 import 'package:beelingual_app/connect_api/api_connect.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -22,10 +23,6 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  // Biến lưu thông tin giả lập (Bạn có thể thay bằng dữ liệu từ API)
-  final String _avatarUrl = 'https://i.pravatar.cc/150?img=12';
-
-  // Hàm hiển thị BottomSheet hoặc Dialog cho phần Cài đặt (Bánh răng)
   void _showSettings() {
     showModalBottomSheet(
       context: context,
@@ -59,7 +56,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.of(context, rootNavigator: true).push(
-                    MaterialPageRoute(builder: (context) => ChangePasswordScreen(),)
+                      MaterialPageRoute(builder: (context) => ChangePasswordScreen(),)
                   );
                 },
               ),
@@ -71,6 +68,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   _handleLogout();
                 },
               ),
+              SizedBox(height: 50,)
             ],
           ),
         );
@@ -159,13 +157,6 @@ class _ProfilePageState extends State<ProfilePage> {
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
                         ),
-                        Text(
-                          // Thêm dấu chấm tròn ở giữa cho đẹp giống Duolingo
-                          "Tham gia ${joinDate ?? '...'}",
-                          style: const TextStyle(color: AppColors.textDark),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
                       ],
                     ),
                   ),
@@ -174,8 +165,14 @@ class _ProfilePageState extends State<ProfilePage> {
                     height: 80,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.brown[200], // Màu nền avatar giống hình
-                      image: DecorationImage(image: NetworkImage(_avatarUrl)),
+                      border: Border.all(
+                        color: Colors.amber, // viền vàng
+                        width: 3, // độ dày viền
+                      ),
+                      image: DecorationImage(
+                        image: AssetImage('assets/Images/logoBee.png'),
+                        fit: BoxFit.cover, // tuỳ chỉnh: cover, contain, ...
+                      ),
                     ),
                   ),
                 ],

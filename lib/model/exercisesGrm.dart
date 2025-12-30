@@ -17,13 +17,14 @@ class ExercisesGrm {
 
   factory ExercisesGrm.fromJson(Map<String, dynamic> json) {
     final optionList = json['options'] as List<dynamic>? ?? [];
-    final List<String> options = optionList.map((e) => e.toString()).toList();
 
     return ExercisesGrm(
       id: json['_id'] ?? '',
-      grammarId: json['grammarId'] ?? '',
+      grammarId: json['grammarId'] is Map
+          ? json['grammarId']['_id'] ?? ''
+          : json['grammarId'] ?? '',
       question: json['question'] ?? '',
-      options: options,
+      options: optionList.map((e) => e.toString()).toList(),
       correctAnswer: json['correctAnswer'] ?? '',
       explanation: json['explanation'] ?? '',
     );

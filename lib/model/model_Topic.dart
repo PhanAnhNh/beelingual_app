@@ -6,7 +6,7 @@ class Topic {
   final String status;
 
 
-  // --- THÊM 3 TRƯỜNG MỚI NÀY ---
+  final int order;
   final int progress;      // % tiến độ (0-100)
   final int totalWords;    // Tổng số từ
   final int learnedWords;  // Số từ đã thuộc
@@ -17,7 +17,7 @@ class Topic {
     required this.imageUrl,
     this.points = 0,
     this.status = 'To do',
-    // --- KHỞI TẠO ---
+    required this.order,
     this.progress = 0,
     this.totalWords = 0,
     this.learnedWords = 0,
@@ -34,11 +34,11 @@ class Topic {
       status: (json['progress'] != null && json['progress'] == 100)
           ? 'Completed'
           : 'Learning',
-
-      // --- MAP DỮ LIỆU TỪ BACKEND ---
+      order: json['order'],
       progress: json['progress'] ?? 0,
       totalWords: json['totalWords'] ?? 0,
       learnedWords: json['learnedWords'] ?? 0,
     );
   }
+
 }

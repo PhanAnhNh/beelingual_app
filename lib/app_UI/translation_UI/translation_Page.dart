@@ -1,4 +1,5 @@
-import 'package:beelingual_app/controller/translate_Controller.dart';
+
+import 'package:beelingual_app/controller/translateController.dart';
 import 'package:flutter/material.dart';
 import "package:provider/provider.dart";
 
@@ -37,6 +38,7 @@ class TranslatePageUI extends StatelessWidget {
             color: Colors.black87,
           ),
         ),
+        centerTitle: true,
         elevation: 0,
         backgroundColor: const Color(0xFFFFF176),
         iconTheme: const IconThemeData(color: Colors.black87),
@@ -46,7 +48,6 @@ class TranslatePageUI extends StatelessWidget {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              // Language selector card
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(

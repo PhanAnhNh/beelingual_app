@@ -4,17 +4,16 @@ import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-class StreakService {
-  // Giả sử baseUrl của bạn là http://10.0.2.2:3000 hoặc URL Render
-  final String baseUrl = "https://english-app-mupk.onrender.com";
+import 'url.dart';
 
+class StreakService {
   Future<Map<String, dynamic>> getMyStreak() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('accessToken'); // Lấy token đã lưu khi login
 
       final response = await http.get(
-        Uri.parse('$baseUrl/api/my-streak'),
+        Uri.parse('$urlAPI/api/my-streak'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -22,7 +21,7 @@ class StreakService {
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body); // Trả về { "current": X, "longest": Y }
+        return jsonDecode(response.body);
       } else {
         print("Lỗi lấy streak: ${response.body}");
         return {"current": 0, "longest": 0};

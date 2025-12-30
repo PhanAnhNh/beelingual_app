@@ -1,6 +1,6 @@
 import 'package:beelingual_app/component/messDialog.dart';
 import 'package:beelingual_app/connect_api/api_Streak.dart';
-import 'package:beelingual_app/controller/exercise_Controller.dart';
+import 'package:beelingual_app/controller/exerciseController.dart';
 import 'package:beelingual_app/model/model_exercise.dart';
 import 'package:flutter/material.dart';
 
@@ -82,6 +82,8 @@ class _PageListeningExerciseState extends State<PageListeningExercise>
     for (final c in clozeControllers) {
       c.dispose();
     }
+    // Cleanup TTS session when user exits
+    controller.dispose();
     super.dispose();
   }
 
@@ -97,6 +99,12 @@ class _PageListeningExerciseState extends State<PageListeningExercise>
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
         title: Text(
           "${widget.skill.toUpperCase()} - ${widget.level}",
           style: const TextStyle(
@@ -106,15 +114,27 @@ class _PageListeningExerciseState extends State<PageListeningExercise>
         ),
         backgroundColor: const Color(0xFFFFF176),
         elevation: 0,
-        automaticallyImplyLeading: false,
       ),
       body: FutureBuilder(
         future: _futureLoad,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation(Color(0xFFFFF176)),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation(Color(0xFFFFF176)),
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'Preparing audio...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ],
               ),
             );
           }
@@ -229,7 +249,11 @@ class _PageListeningExerciseState extends State<PageListeningExercise>
                                       borderRadius:
                                       BorderRadius.circular(40),
                                       onTap: () async {
-                                        await controller.speakLisExercises(audioUrl: item.audioUrl, level: item.level);
+                                        await controller.speakLisExercises(
+                                          exerciseId: item.id,
+                                          audioUrl: item.audioUrl,
+                                          level: item.level,
+                                        );
                                       },
                                       child: Container(
                                         padding:
@@ -240,10 +264,9 @@ class _PageListeningExerciseState extends State<PageListeningExercise>
                                           shape: BoxShape.circle,
                                         ),
                                         child: Icon(
-                                          controller.isPlaying
+                                          controller.isPlayingGeminiAudio
                                               ? Icons.stop
-                                              : Icons
-                                              .volume_up_rounded,
+                                              : Icons.volume_up_rounded,
                                           size: 32,
                                           color: Colors.orange,
                                         ),

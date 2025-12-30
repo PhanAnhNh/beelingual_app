@@ -5,6 +5,8 @@ import 'package:beelingual_app/connect_api/api_connect.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 
+import 'url.dart';
+
 Future<Map<String, dynamic>?> fetchUserProgress(BuildContext context) async {
   final url = Uri.parse('$urlAPI/api/user-progress'); // Endpoint BE mới
   final session = SessionManager();

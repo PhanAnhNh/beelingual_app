@@ -5,6 +5,7 @@ import 'package:beelingual_app/model/useVocabulary.dart';
 import 'package:flutter/material.dart';
 import 'package:beelingual_app/connect_api/api_connect.dart';
 import 'package:provider/provider.dart';
+import 'package:beelingual_app/controller/vocabulary_tts_controller.dart';
 
 class VocabularyLearnedScreen extends StatefulWidget {
   const VocabularyLearnedScreen({super.key});
@@ -13,13 +14,46 @@ class VocabularyLearnedScreen extends StatefulWidget {
   State<VocabularyLearnedScreen> createState() => _VocabularyLearnedScreenState();
 }
 
-class _VocabularyLearnedScreenState extends State<VocabularyLearnedScreen> {
+class _VocabularyLearnedScreenState extends State<VocabularyLearnedScreen>
+    with SingleTickerProviderStateMixin {
   Set<String> _selectedVocabIds = {};
+  final VocabularyTTSController _ttsController = VocabularyTTSController();
+  late AnimationController _animationController;
+
+  // Theme Colors
+  static const Color honeyYellow = Color(0xFFFFB800);
+  static const Color goldenAmber = Color(0xFFFFA000);
+  static const Color darkHoney = Color(0xFF8B6914);
+  static const Color creamWhite = Color(0xFFFFFDF5);
+  static const Color warmBrown = Color(0xFF5D4037);
+  static const Color lightHoneycomb = Color(0xFFFFF3CD);
+
+  final TextEditingController _searchController = TextEditingController();
+  String _searchText = "";
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      setState(() {
+        _searchText = _searchController.text;
+      });
+    });
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
 
   void _refreshData(BuildContext context) {
-    // Chỉ cần gọi hàm reload trong Provider
     Provider.of<UserVocabularyProvider>(context, listen: false).reloadVocab(context);
-    // Reset selection
     setState(() {
       _selectedVocabIds = {};
     });
@@ -35,261 +69,554 @@ class _VocabularyLearnedScreenState extends State<VocabularyLearnedScreen> {
     });
   }
 
-  // --- HÀM XỬ LÝ REFRESH KÉO XUỐNG ---
   Future<void> _handleRefresh() async {
-    // Tải lại dữ liệu qua Provider
-    await Provider.of<UserVocabularyProvider>(context, listen: false).reloadVocab(context);
-    // Bạn có thể thêm logic kiểm tra session ở đây nếu cần
-    // session.checkLoginStatus(context);
+    await Provider.of<UserVocabularyProvider>(context, listen: false)
+        .reloadVocab(context);
   }
 
-  // Hàm xử lý xóa từ vựng đã chọn (Đã sửa logic xóa API)
-  void _handleDeleteSelected() async {
+  Future<void> _handleDeleteSelected() async {
     if (_selectedVocabIds.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Vui lòng chọn từ vựng để xóa.")),
-      );
+      _showSnackBar("Vui lòng chọn từ vựng để xóa.", goldenAmber);
       return;
     }
 
     final int countToDelete = _selectedVocabIds.length;
-    final bool? confirm = await showDialog<bool>(
+    final bool? confirm = await _showDeleteConfirmDialog(countToDelete);
+
+    if (confirm == true) {
+      await _performDelete(countToDelete);
+    }
+  }
+
+  Future<bool?> _showDeleteConfirmDialog(int count) {
+    return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("Xác nhận xóa"),
-        content: Text("Bạn có chắc chắn muốn xóa $countToDelete từ vựng đã chọn khỏi từ điển không?"),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: creamWhite,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.warning_rounded, color: Colors.red, size: 28),
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              "Xác nhận xóa",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                color: warmBrown,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          "Bạn có chắc chắn muốn xóa $count từ vựng đã chọn?",
+          style: TextStyle(fontSize: 16, color: warmBrown.withOpacity(0.8)),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Hủy")),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Xóa", style: TextStyle(color: Colors.red))),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              "Hủy",
+              style: TextStyle(fontSize: 16, color: warmBrown.withOpacity(0.6)),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 0,
+            ),
+            child: const Text("Xóa", style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
         ],
       ),
     );
-
-    if (confirm == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Đang xóa $countToDelete từ vựng...")),
-      );
-
-      bool allSuccess = true;
-      List<String> successfullyDeleted = [];
-
-      // Dùng List.from() để tránh lỗi khi _selectedVocabIds thay đổi trong vòng lặp
-      for (var userVocabId in List.from(_selectedVocabIds)) {
-        // ⚠️ GỌI HÀM API THẬT SỰ
-        final success = await deleteVocabularyFromDictionary(userVocabId, context);
-
-        if (success) {
-          successfullyDeleted.add(userVocabId);
-        } else {
-          allSuccess = false;
-        }
-      }
-
-      // Cập nhật lại danh sách chọn sau khi xóa thành công
-      setState(() {
-        _selectedVocabIds.removeAll(successfullyDeleted);
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(allSuccess
-            ? "Đã xóa thành công $countToDelete từ vựng."
-            : "Đã xóa ${successfullyDeleted.length} từ vựng. Một số từ không thể xóa được."),
-          backgroundColor: allSuccess ? Colors.green : Colors.orange,
-        ),
-      );
-      _refreshData(context); // Tải lại dữ liệu sau khi hoàn tất
-    }
   }
+
+  Future<void> _performDelete(int countToDelete) async {
+    _showSnackBar("Đang xóa $countToDelete từ vựng...", goldenAmber);
+
+    bool allSuccess = true;
+    List<String> successfullyDeleted = [];
+
+    for (var userVocabId in List.from(_selectedVocabIds)) {
+      final success = await deleteVocabularyFromDictionary(userVocabId, context);
+      if (success) {
+        successfullyDeleted.add(userVocabId);
+      } else {
+        allSuccess = false;
+      }
+    }
+
+    setState(() {
+      _selectedVocabIds.removeAll(successfullyDeleted);
+    });
+
+    _showSnackBar(
+      allSuccess
+          ? "Đã xóa thành công $countToDelete từ vựng."
+          : "Đã xóa ${successfullyDeleted.length} từ. Một số không thể xóa.",
+      allSuccess ? const Color(0xFF4CAF50) : goldenAmber,
+    );
+
+    _refreshData(context);
+  }
+
+  void _showSnackBar(String message, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        duration: const Duration(seconds: 3),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
 
 
   @override
   Widget build(BuildContext context) {
-    const Color backgroundColor = Color(0xFFFFFDE7);
-    const Color cardColor = Color(0xFFFFF9C4);
-    const Color startButtonColor = Color(0xFFB88F4F);
-    const Color darkTextColor = Color(0xFF5D4037);
-
     final vocabProvider = Provider.of<UserVocabularyProvider>(context);
     final vocabList = vocabProvider.vocabList;
     final isLoading = vocabProvider.isLoading;
 
+    final filteredList = vocabList.where((vocab) {
+      if (_searchText.isEmpty) return true;
+      if (vocab == null) return false;
+      final searchLower = _searchText.toLowerCase();
+      return vocab.word.toLowerCase().contains(searchLower) ||
+          vocab.meaning.toLowerCase().contains(searchLower);
+    }).toList();
+
     return Scaffold(
-      backgroundColor: backgroundColor,
-      appBar: AppBar(
-        backgroundColor: Color(0xFFFFE474),
-        elevation: 0,
-        title: const Text(
-          'Vocabulary Learned',
-          style: TextStyle(color: darkTextColor, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.delete, color: darkTextColor),
-            onPressed: _handleDeleteSelected,
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        color: AppColors.textDark,
-        onRefresh: _handleRefresh,
-
-        child: SingleChildScrollView(
+      backgroundColor: creamWhite,
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            _buildSliverAppBar(),
+            SliverToBoxAdapter(child: _buildSearchBar()),
 
-          child: Column(
-            children: [
-              // Header: Select all (Đã sửa lỗi)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: Row(
-                  children: [
-                    Checkbox(
-                      // SỬ DỤNG _currentVocabList để kiểm tra trạng thái
-                      value: vocabList.isNotEmpty &&
-                          _selectedVocabIds.length == vocabList.length,
-                      onChanged: (bool? selected) {
-                        setState(() {
-                          if (selected == true) {
-                            _selectedVocabIds = vocabList.map((v) => v.userVocabId).toSet();
-                          } else {
-                            _selectedVocabIds.clear();
-                          }
-                        });
-                      },
-                      activeColor: darkTextColor,
-                    ),
-                    const Text('Select all', style: TextStyle(color: darkTextColor, fontWeight: FontWeight.w500)),
-                  ],
+            if (filteredList.isNotEmpty)
+              SliverToBoxAdapter(child: _buildSelectAllSection(filteredList)),
+
+            if (isLoading)
+              const SliverFillRemaining(
+                child: Center(
+                  child: CircularProgressIndicator(color: honeyYellow, strokeWidth: 3),
+                ),
+              )
+            else if (filteredList.isEmpty)
+            // Hiển thị trạng thái trống khác nhau tùy vào việc đang tìm kiếm hay không
+              SliverFillRemaining(
+                  child: _searchText.isNotEmpty
+                      ? _buildNoSearchResult() // Widget mới cho tìm kiếm không thấy
+                      : _buildEmptyState()
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                      // 3. Sử dụng filteredList để hiển thị
+                      final vocab = filteredList[index];
+                      // Kiểm tra null safety
+                      if (vocab == null) return const SizedBox.shrink();
+
+                      final isSelected = _selectedVocabIds.contains(vocab.userVocabId);
+                      return _buildVocabularyCard(context, vocab, isSelected, index);
+                    },
+                    childCount: filteredList.length,
+                  ),
                 ),
               ),
 
-
-              if (isLoading)
-                const Center(child: CircularProgressIndicator())
-              else if (vocabList.isEmpty)
-                const Center(child: Text("Bạn chưa có từ vựng nào trong từ điển cá nhân."))
-              else
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: vocabList.length,
-                  itemBuilder: (context, index) {
-                    final vocab = vocabList[index];
-                    final isSelected = _selectedVocabIds.contains(vocab.userVocabId);
-
-                    return _buildVocabularyListItem(
-                        context,
-                        vocab,
-                        isSelected,
-                        _toggleSelection,
-                        darkTextColor,
-                        cardColor,
-                        startButtonColor
-                    );
-                  },
-                ),
-            ],
-          ),
+            const SliverToBoxAdapter(child: SizedBox(height: 100)),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildVocabularyListItem(
+  Widget _buildNoSearchResult() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.search_off_rounded, size: 64, color: goldenAmber.withOpacity(0.5)),
+          const SizedBox(height: 16),
+          Text(
+            "Không tìm thấy từ nào",
+            style: TextStyle(fontSize: 18, color: warmBrown.withOpacity(0.6), fontWeight: FontWeight.w600),
+          ),
+          Text(
+            "Thử tìm kiếm với từ khóa khác",
+            style: TextStyle(fontSize: 14, color: warmBrown.withOpacity(0.4)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: honeyYellow.withOpacity(0.5), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: honeyYellow.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: _searchController,
+        style: const TextStyle(color: warmBrown, fontSize: 16),
+        decoration: InputDecoration(
+          hintText: "Tìm kiếm từ vựng, nghĩa...",
+          hintStyle: TextStyle(color: warmBrown.withOpacity(0.4)),
+          prefixIcon: const Icon(Icons.search_rounded, color: goldenAmber),
+          suffixIcon: _searchText.isNotEmpty
+              ? IconButton(
+            icon: const Icon(Icons.clear_rounded, color: warmBrown),
+            onPressed: () {
+              _searchController.clear();
+              FocusScope.of(context).unfocus(); // Ẩn bàn phím khi xóa
+            },
+          )
+              : null,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSliverAppBar() {
+    return SliverAppBar(
+      floating: false,
+      pinned: true,
+      backgroundColor: honeyYellow,
+      elevation: 0,
+      flexibleSpace: FlexibleSpaceBar(
+        centerTitle: true,
+        title: const Text(
+          'Vocabulary learned',
+          style: TextStyle(
+            color: warmBrown,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        background: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFFFD54F), honeyYellow, goldenAmber],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
+          decoration: BoxDecoration(
+            color: _selectedVocabIds.isNotEmpty
+                ? Colors.red.withOpacity(0.15)
+                : Colors.white.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: IconButton(
+            icon: Icon(
+              Icons.delete_rounded,
+              color: _selectedVocabIds.isNotEmpty ? Colors.red.shade700 : warmBrown,
+              size: 24,
+            ),
+            onPressed: _handleDeleteSelected,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSelectAllSection(List<UserVocabularyItem?> vocabList) {
+    final isAllSelected = vocabList.isNotEmpty &&
+        _selectedVocabIds.length == vocabList.length;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: honeyYellow.withOpacity(0.3), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: honeyYellow.withOpacity(0.12),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                if (isAllSelected) {
+                  _selectedVocabIds.clear();
+                } else {
+                  _selectedVocabIds = vocabList.map((v) => v!.userVocabId).toSet();
+                }
+              });
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 26,
+              height: 26,
+              decoration: BoxDecoration(
+                gradient: isAllSelected
+                    ? const LinearGradient(colors: [honeyYellow, goldenAmber])
+                    : null,
+                color: isAllSelected ? null : Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isAllSelected ? goldenAmber : warmBrown.withOpacity(0.3),
+                  width: 2,
+                ),
+              ),
+              child: isAllSelected
+                  ? const Icon(Icons.check, color: Colors.white, size: 16)
+                  : null,
+            ),
+          ),
+          const SizedBox(width: 14),
+          const Text(
+            'Select all',
+            style: TextStyle(color: warmBrown, fontWeight: FontWeight.w600, fontSize: 16),
+          ),
+          const Spacer(),
+          if (_selectedVocabIds.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [honeyYellow, goldenAmber]),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                '${_selectedVocabIds.length} đã chọn',
+                style: const TextStyle(color: warmBrown, fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              color: honeyYellow.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.book_outlined, size: 64, color: goldenAmber),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            "Chưa có từ vựng nào",
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: warmBrown),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Hãy bắt đầu học để thêm từ vựng!",
+            style: TextStyle(fontSize: 16, color: warmBrown.withOpacity(0.6)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVocabularyCard(
       BuildContext context,
       UserVocabularyItem vocab,
       bool isSelected,
-      Function(String) toggleSelection,
-      Color darkTextColor,
-      Color cardColor,
-      Color startButtonColor,
+      int index,
       ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10, left: 16, right: 16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Hàng 1: Checkbox, Audio, Word, Meaning, Start Button
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Checkbox
-              SizedBox(
-                width: 24,
-                height: 24,
-                child: Checkbox(
-                  value: isSelected,
-                  onChanged: (val) => toggleSelection(vocab.userVocabId),
-                  activeColor: darkTextColor,
-                ),
-              ),
-              const SizedBox(width: 8),
-
-              // Icon Audio (Giả lập chức năng phát âm)
-              Icon(Icons.volume_up, color: darkTextColor),
-              const SizedBox(width: 12),
-
-              // Word & Meaning
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      vocab.word,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: darkTextColor,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      vocab.pronunciation,
-                      style: TextStyle(
-                      fontSize: 14,
-                      color: darkTextColor.withOpacity(0.8),
-                      ),
-                    ),
-                    Text(
-                      vocab.meaning,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: darkTextColor.withOpacity(0.8),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+    return TweenAnimationBuilder<double>(
+      duration: Duration(milliseconds: 350 + (index * 40)),
+      tween: Tween(begin: 0.0, end: 1.0),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, 30 * (1 - value)),
+          child: Opacity(opacity: value, child: child),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? lightHoneycomb : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? honeyYellow : Colors.transparent,
+            width: 2,
           ),
-
-          // Hàng 2: Example/Trạng thái (theo mẫu ảnh)
-          Padding(
-            padding: const EdgeInsets.only(left: 44.0, top: 8.0), // Căn chỉnh với từ vựng
-            child: Row(
-              children: [
-                Icon(Icons.volume_up, size: 18, color: darkTextColor), // Icon Audio cho ví dụ
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    // Ví dụ không có trong JSON bạn cung cấp, nên dùng tạm Loại từ và Trạng thái.
-                    '(${vocab.type}) - Status: ${vocab.status}',
-                    style: TextStyle(fontSize: 14, color: darkTextColor.withOpacity(0.7)),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+          boxShadow: [
+            BoxShadow(
+              color: isSelected ? honeyYellow.withOpacity(0.2) : Colors.black.withOpacity(0.05),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () => _toggleSelection(vocab.userVocabId),
+            splashColor: honeyYellow.withOpacity(0.2),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Checkbox
+                  GestureDetector(
+                    onTap: () => _toggleSelection(vocab.userVocabId),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 28,
+                      height: 28,
+                      margin: const EdgeInsets.only(top: 4),
+                      decoration: BoxDecoration(
+                        gradient: isSelected
+                            ? const LinearGradient(colors: [honeyYellow, goldenAmber])
+                            : null,
+                        color: isSelected ? null : Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isSelected ? goldenAmber : warmBrown.withOpacity(0.25),
+                          width: 2,
+                        ),
+                      ),
+                      child: isSelected
+                          ? const Icon(Icons.check, color: Colors.white, size: 18)
+                          : null,
+                    ),
                   ),
-                ),
-              ],
+
+                  const SizedBox(width: 14),
+
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                vocab.word,
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: warmBrown,
+                                ),
+                              ),
+                            ),
+                            Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(12),
+                                onTap: () => _ttsController.speak(vocab.word),
+                                child: Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: honeyYellow.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(Icons.volume_up_rounded, color: darkHoney, size: 22),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 6),
+
+                        Text(
+                          vocab.pronunciation,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: darkHoney.withOpacity(0.6),
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        Text(
+                          vocab.meaning,
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: warmBrown.withOpacity(0.85),
+                            height: 1.4,
+                          ),
+                        ),
+
+                        if (vocab.type.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: honeyYellow.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              vocab.type,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: darkHoney,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }

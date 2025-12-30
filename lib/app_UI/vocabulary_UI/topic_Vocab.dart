@@ -1,11 +1,9 @@
 import 'package:beelingual_app/app_UI/vocabulary_UI/level_Vocab.dart';
-import 'package:beelingual_app/app_UI/vocabulary_UI/list_Vocab.dart';
 import 'package:beelingual_app/component/progressProvider.dart';
 import 'package:beelingual_app/connect_api/api_connect.dart';
 import 'package:beelingual_app/model/model_Topic.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// Import file chứa Topic model và hàm fetchTopics của bạn ở đây
 
 class AppColors {
   static const Color background = Color(0xFFFFFDE7);
@@ -13,10 +11,7 @@ class AppColors {
   static const Color cardSelected = Color(0xFFFCE79A);
   static const Color iconActive = Color(0xFFEBC934);
   static const Color textDark = Color(0xFF5D4037);
-
   static const Color textLight = Color(0xFFA68B7B);
-  static const Color buttonBackground = Color(0xFFFDF1C8);
-  static const Color progressBarTrack = Color(0xFFE0B769);
   static const Color progressBarFill = Color(0xFF5D4037);
 }
 
@@ -28,38 +23,132 @@ class LearningTopicsScreen extends StatefulWidget {
 }
 
 class _LearningTopicsScreenState extends State<LearningTopicsScreen> {
-  // Biến chứa dữ liệu tương lai
-  late Future<List<Topic>> futureTopics;
+  final ScrollController _scrollController = ScrollController();
+
+  List<Topic> _topics = [];
+  int _currentPage = 1;
+  int _totalTopics = 0;
+
+  bool _isLoading = false;
+  bool _hasMore = true;
+  bool _isFetchingMore = false;
 
   @override
   void initState() {
     super.initState();
 
-    // Sử dụng Future.delayed để có thể truyền context an toàn
-    futureTopics = Future.delayed(Duration.zero, () {
-      if (mounted) {
-        Provider.of<UserProgressProvider>(context, listen: false).fetchProgress(context);
-      }
-      // Truyền context vào để nếu lỗi thì tự logout
-      return fetchTopics(context);
+    Future.microtask(() async {
+      await Provider.of<UserProgressProvider>(context, listen: false)
+          .fetchProgress(context);
+      await _loadInitialTopics();
     });
+
+    _scrollController.addListener(_onScroll);
   }
 
-  Future<void> _refreshData() async{
-    await Provider.of<UserProgressProvider>(context, listen: false).fetchProgress(context);
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients || !_hasMore) return;
+
+    final threshold =
+        _scrollController.position.maxScrollExtent - 200;
+
+    if (_scrollController.position.pixels >= threshold) {
+      _loadMoreTopics();
+    }
+  }
+
+  // LOAD PAGE 1
+  Future<void> _loadInitialTopics() async {
+    if (_isLoading) return;
 
     setState(() {
-      futureTopics = fetchTopics(context);
+      _isLoading = true;
+      _currentPage = 1;
+      _topics.clear();
+      _hasMore = true;
     });
-    await futureTopics;
+
+    try {
+      final result = await fetchTopicsPaginated(
+        page: 1,
+        limit: 6,
+        context: context,
+      );
+
+      final List<Topic> fetched = List<Topic>.from(result['data']);
+
+      if (!mounted) return;
+
+      setState(() {
+        _topics = fetched;
+        _totalTopics = result['total'] ?? 0;
+        _hasMore = _topics.length < _totalTopics;
+        _currentPage = 2;
+      });
+    } catch (e) {
+      debugPrint("Load initial error: $e");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // LOAD MORE
+  Future<void> _loadMoreTopics() async {
+    if (_isFetchingMore || !_hasMore || _isLoading) return;
+
+    _isFetchingMore = true;
+
+    try {
+      final result = await fetchTopicsPaginated(
+        page: _currentPage,
+        limit: 2,
+        context: context,
+      );
+
+      final List<Topic> newTopics = List<Topic>.from(result['data']);
+
+      if (!mounted) return;
+
+      setState(() {
+        _topics.addAll(
+          newTopics.where(
+                (t) => !_topics.any((e) => e.id == t.id),
+          ),
+        );
+        _hasMore = _topics.length < _totalTopics;
+        _currentPage++;
+      });
+    } catch (e) {
+      debugPrint("Load more error: $e");
+    } finally {
+      _isFetchingMore = false;
+    }
+  }
+
+  Future<void> _refreshData() async {
+    _isFetchingMore = false;
+    _currentPage = 1;
+    _hasMore = true;
+
+    await Provider.of<UserProgressProvider>(context, listen: false)
+        .fetchProgress(context);
+    await _loadInitialTopics();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Chủ đề từ vựng'),
-        centerTitle: true,
+        title: const Text(
+          'Vocabulary Topic',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: const Color(0xFFFFE474),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
@@ -72,42 +161,38 @@ class _LearningTopicsScreenState extends State<LearningTopicsScreen> {
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.all(20.0),
+                padding: const EdgeInsets.all(20),
                 child: _buildHeader(),
               ),
-              // Phần danh sách cuộn được mở rộng
               Expanded(
-                child: FutureBuilder<List<Topic>>(
-                  future: futureTopics,
-                  builder: (context, snapshot) {
-                    // 1. Đang tải
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _topics.isEmpty
+                    ? const Center(child: Text("Không có chủ đề nào"))
+                    : GridView.builder(
+                  controller: _scrollController,
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    8,
+                    16,
+                    100, // 👈 khoảng trắng bên dưới
+                  ),
+                  gridDelegate:
+                  const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 20,
+                    mainAxisSpacing: 20,
+                    childAspectRatio: 0.8,
+                  ),
+                  itemCount:
+                  _topics.length + (_hasMore ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (index == _topics.length) {
+                      return const Center(
+                        child: CircularProgressIndicator(),
+                      );
                     }
-                    // 2. Có lỗi
-                    else if (snapshot.hasError) {
-                      return Center(child: Text("Lỗi: ${snapshot.error}"));
-                    }
-                    // 3. Không có dữ liệu
-                    else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                      return const Center(child: Text("Không có chủ đề nào"));
-                    }
-
-                    // 4. Có dữ liệu -> Hiển thị Grid
-                    final topics = snapshot.data!;
-                    return GridView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 20.0,
-                        mainAxisSpacing: 20.0,
-                        childAspectRatio: 0.8, // Chỉnh tỷ lệ để thẻ cao hơn chút cho đẹp
-                      ),
-                      itemCount: topics.length,
-                      itemBuilder: (context, index) {
-                        return TopicCard(topic: topics[index]);
-                      },
-                    );
+                    return TopicCard(topic: _topics[index]);
                   },
                 ),
               ),
@@ -119,41 +204,42 @@ class _LearningTopicsScreenState extends State<LearningTopicsScreen> {
   }
 
   Widget _buildHeader() {
-    final progressProvider = Provider.of<UserProgressProvider>(context);
-
-    // Lấy số liệu
-    final percentage = progressProvider.topicProgressBarPercentage;
-    final isLoading = progressProvider.isLoading;
+    final provider = Provider.of<UserProgressProvider>(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Thanh Progress Bar
         ClipRRect(
-          borderRadius: BorderRadius.circular(10.0),
+          borderRadius: BorderRadius.circular(10),
           child: LinearProgressIndicator(
-            value: percentage / 100,
-            backgroundColor: Color(0xFF5D4037), // Nền trắng
-            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFEBC934)), // Vàng đậm
-            minHeight: 20.0,
+            value: provider.topicProgressBarPercentage / 100,
+            backgroundColor: AppColors.progressBarFill,
+            valueColor:
+            const AlwaysStoppedAnimation(Color(0xFFEBC934)),
+            minHeight: 20,
           ),
         ),
-        const SizedBox(height: 10.0),
-
-        // Dòng Text thông tin
+        const SizedBox(height: 10),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Bên trái: Hiển thị chữ "Tiến độ chung" hoặc "Lộ trình"
             const Text(
-                'Lộ trình học tập',
-                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark, fontSize: 16)
+              'Lộ trình học tập',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: AppColors.textDark,
+                fontSize: 16,
+              ),
             ),
-
-            // Bên phải: Hiển thị %
             Text(
-                isLoading ? '...%' : '${percentage.toStringAsFixed(1)}%',
-                style: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: AppColors.textDark)
+              provider.isLoading
+                  ? '...%'
+                  : '${provider.topicProgressBarPercentage.toStringAsFixed(1)}%',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textDark,
+              ),
             ),
           ],
         ),
@@ -162,7 +248,6 @@ class _LearningTopicsScreenState extends State<LearningTopicsScreen> {
   }
 }
 
-// CẬP NHẬT TOPIC CARD ĐỂ HIỂN THỊ ẢNH URL
 class TopicCard extends StatelessWidget {
   final Topic topic;
 
@@ -170,15 +255,14 @@ class TopicCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return Container(
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(20.0),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
-            blurRadius: 8.0,
+            blurRadius: 8,
             offset: const Offset(0, 4),
           ),
         ],
@@ -186,89 +270,65 @@ class TopicCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
+          borderRadius: BorderRadius.circular(20),
           onTap: () {
-            // Code mới (Thêm rootNavigator: true để che lấp menu dưới)
-            Navigator.of(context, rootNavigator: true).push(
-              MaterialPageRoute(builder: (context) => LevelPage(topicId: topic.id, topicName: topic.title, topic: topic,)),
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => LevelPage(
+                  topicId: topic.id,
+                  topicName: topic.title,
+                  topic: topic,
+                ),
+              ),
             );
           },
-          borderRadius: BorderRadius.circular(20.0),
           child: Padding(
-            padding: const EdgeInsets.all(12.0),
+            padding: const EdgeInsets.all(12),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // 1. ẢNH TOPIC
                 Expanded(
                   flex: 3,
                   child: topic.imageUrl.isNotEmpty
-                      ? Image.network(
-                    topic.imageUrl,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(Icons.broken_image, size: 50, color: Colors.grey);
-                    },
-                  )
-                      : const Icon(Icons.image, size: 50, color: AppColors.textDark),
+                      ? Image.network(topic.imageUrl)
+                      : const Icon(Icons.image, size: 50),
                 ),
-                const SizedBox(height: 8.0),
-
-                // 2. TÊN TOPIC
-                Expanded(
-                  flex: 1,
-                  child: Text(
-                    topic.title,
-                    style: const TextStyle(
-                      color: AppColors.textDark,
-                      fontSize: 15.0,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                const SizedBox(height: 8),
+                Text(
+                  topic.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
                   ),
                 ),
-
-                // 3. THANH TIẾN ĐỘ (Thay cho pts và status cũ)
-                Column(
-                  children: [
-                    // Dòng chữ ví dụ: "5/20 từ"
-                    Text(
-                      '${topic.learnedWords}/${topic.totalWords} từ',
-                      style: const TextStyle(
-                        color: AppColors.textLight,
-                        fontSize: 12.0,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 6.0),
-
-                    // Thanh Progress Bar nhỏ
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(5.0),
-                      child: LinearProgressIndicator(
-                        value: topic.progress / 100, // Chuyển 50 thành 0.5
-                        backgroundColor: Colors.white,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          // Nếu 100% thì màu xanh lá, chưa xong thì màu vàng cam
-                            topic.progress >= 100 ? Colors.green : AppColors.progressBarFill
-                        ),
-                        minHeight: 8.0,
-                      ),
-                    ),
-                    const SizedBox(height: 4.0),
-
-                    // Số phần trăm
-                    Text(
-                      '${topic.progress}%',
-                      style: const TextStyle(
-                        color: AppColors.textDark,
-                        fontSize: 11.0,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                )
+                const SizedBox(height: 6),
+                Text(
+                  '${topic.learnedWords}/${topic.totalWords} từ',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textLight,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                LinearProgressIndicator(
+                  value: topic.progress / 100,
+                  backgroundColor: Colors.white,
+                  valueColor: AlwaysStoppedAnimation(
+                    topic.progress >= 100
+                        ? Colors.green
+                        : AppColors.progressBarFill,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${topic.progress}%',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
           ),

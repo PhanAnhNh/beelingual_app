@@ -23,7 +23,7 @@ class MyApp extends StatelessWidget {
           create: (context) => UserVocabularyProvider(context),
         ),
         ChangeNotifierProvider<UserProfileProvider>(
-          create: (context) => UserProfileProvider(context),
+          create: (context) => UserProfileProvider()..reloadProfile(context),
         ),
         ChangeNotifierProvider<UserProgressProvider>(
           create: (context) => UserProgressProvider(context),

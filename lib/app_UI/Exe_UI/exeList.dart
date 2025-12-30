@@ -1,6 +1,7 @@
+
 import 'package:beelingual_app/component/messDialog.dart';
 import 'package:beelingual_app/connect_api/api_Streak.dart';
-import 'package:beelingual_app/controller/exercise_Controller.dart';
+import 'package:beelingual_app/controller/exerciseController.dart';
 import 'package:beelingual_app/model/model_exercise.dart';
 import 'package:flutter/material.dart';
 
@@ -34,7 +35,7 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
     controller.onAudioStateChange = () {
       if (mounted) setState(() {});
     };
-    _futureLoad = controller.fetchExercisesByTopicRef(widget.topicId);
+    _futureLoad = controller.fetchExercisesByTopicId(widget.topicId);
     _futureLoad.then((_) {
       // Kiểm tra: Nếu màn hình còn mở VÀ danh sách bài tập không rỗng
       if (mounted && controller.exercises.isNotEmpty) {
@@ -67,6 +68,8 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
   void dispose() {
     _animationController.dispose();
     answerController.dispose();
+    // Cleanup TTS session when user exits
+    controller.dispose();
     super.dispose();
   }
 
@@ -121,8 +124,9 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
 
           // ===== INIT FILL IN =====
           if (item.type == "fill_in_blank") {
-            answerController.text =
-                controller.userAnswers[item.id] ?? "";
+            if (!controller.isAnswered()) {
+              answerController.clear();
+            }
           }
 
           // ===== INIT CLOZE TEST =====
@@ -139,11 +143,9 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
               );
             }
 
-            if (controller.userAnswers.containsKey(item.id)) {
-              final saved =
-              controller.userAnswers[item.id]!.split("/");
-              for (int i = 0; i < saved.length; i++) {
-                clozeControllers[i].text = saved[i];
+            if (!controller.isAnswered()) {
+              for (final c in clozeControllers) {
+                c.clear();
               }
             }
           }
@@ -222,7 +224,7 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
                                       BorderRadius.circular(40),
                                       onTap: () async {
                                         await controller.speakExercises(
-                                            item.audioUrl);
+                                            item.id, item.audioUrl);
                                       },
                                       child: Container(
                                         padding:
@@ -233,10 +235,9 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
                                           shape: BoxShape.circle,
                                         ),
                                         child: Icon(
-                                          controller.isPlaying
+                                          controller.isPlayingGeminiAudio
                                               ? Icons.stop
-                                              : Icons
-                                              .volume_up_rounded,
+                                              : Icons.volume_up_rounded,
                                           size: 32,
                                           color: Colors.orange,
                                         ),
@@ -434,8 +435,7 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
                           setState(() {
                             selectedOption = null;
                             answerController.clear();
-                            for (final c
-                            in clozeControllers) {
+                            for (final c in clozeControllers) {
                               c.clear();
                             }
                           });

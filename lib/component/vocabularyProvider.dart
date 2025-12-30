@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:beelingual_app/connect_api/api_connect.dart';
 import 'package:beelingual_app/model/useVocabulary.dart';
-import 'package:beelingual_app/connect_api/api_connect.dart'; // Chắc chắn đã import file này
+import 'package:flutter/material.dart';
 
 class UserVocabularyProvider extends ChangeNotifier {
   // Danh sách từ vựng hiện tại
@@ -13,6 +13,12 @@ class UserVocabularyProvider extends ChangeNotifier {
   // Constructor hoặc init để tải lần đầu
   UserVocabularyProvider(BuildContext context) {
     fetchVocab(context);
+  }
+
+  void clear() {
+    _vocabList.clear();
+    _isLoading = false;
+    notifyListeners();
   }
 
   // --- Hàm tải dữ liệu API ---
@@ -32,13 +38,10 @@ class UserVocabularyProvider extends ChangeNotifier {
       // Xử lý lỗi nếu cần
     } finally {
       _isLoading = false;
-      notifyListeners(); // Báo hiệu kết thúc tải và cập nhật UI
+      notifyListeners();
     }
   }
 
-  // --- Hàm CẬP NHẬT TỨC THỜI (được gọi từ màn hình khác) ---
-  // Khi bạn thêm/xóa từ ở màn hình khác, chỉ cần gọi hàm này:
-  // Provider.of<UserVocabularyProvider>(context, listen: false).reloadVocab();
   Future<void> reloadVocab(BuildContext context) async {
     // Chỉ cần gọi lại hàm tải
     await fetchVocab(context);

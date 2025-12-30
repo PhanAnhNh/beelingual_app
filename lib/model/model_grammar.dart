@@ -30,7 +30,7 @@ class Grammar {
   final String structure;
   final String content;
   final String example;
-  final String category;
+  final String categoryId;
   final DateTime? createdAt;
 
   Grammar({
@@ -40,7 +40,7 @@ class Grammar {
     required this.structure,
     required this.content,
     required this.example,
-    required this.category,
+    required this.categoryId,
     this.createdAt,
   });
 
@@ -52,7 +52,9 @@ class Grammar {
       structure: json['structure'] ?? '',
       content: json['content'] ?? '',
       example: json['example'] ?? '',
-      category: json['categoryId'],
+      categoryId: json['categoryId'] is Map
+          ? json['categoryId']['_id'] ?? ''
+          : json['categoryId'] ?? '',
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'])
           : null,

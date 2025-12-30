@@ -1,5 +1,5 @@
 import 'package:beelingual_app/component/messDialog.dart';
-import 'package:beelingual_app/controller/exeGrm_Controller.dart';
+import 'package:beelingual_app/controller/exeGrmController.dart';
 import 'package:beelingual_app/model/exercisesGrm.dart';
 import 'package:flutter/material.dart';
 
@@ -34,7 +34,7 @@ class _PageExercisesListState extends State<PageExercisesGrmList>
   @override
   void initState() {
     super.initState();
-    _futureLoad = controller.fetchExercisesByTopicRef(widget.grammarId);
+    _futureLoad = controller.fetchExercisesByGrammarId(widget.grammarId);
 
     _animationController = AnimationController(
       vsync: this,
