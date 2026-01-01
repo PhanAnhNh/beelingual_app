@@ -1,4 +1,4 @@
-// lib/services/socket_service.dart
+// lib/connect_api/socket_service.dart
 import 'package:beelingual_app/connect_api/url.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
@@ -10,17 +10,16 @@ class SocketService {
   late IO.Socket socket;
   bool _isConnected = false;
 
-  // Khởi tạo kết nối
+  // --- 1. KHỞI TẠO KẾT NỐI ---
   void initSocket() {
-    if (_isConnected) return;
+    if (_isConnected) return; // Nếu đã kết nối rồi thì không connect lại
 
-    // Cắt bỏ phần '/api' nếu urlAPI của bạn có dạng 'http://IP:3000/api'
-    // Socket cần kết nối vào root: 'http://IP:3000'
     String baseUrl = urlAPI.replaceAll('/api', '');
 
     socket = IO.io(baseUrl, IO.OptionBuilder()
-        .setTransports(['websocket']) // Bắt buộc dùng websocket để ổn định
-        .disableAutoConnect() // Tự chủ động connect
+        .setTransports(['websocket'])
+        .disableAutoConnect()
+        .enableForceNew() // Thêm dòng này để đảm bảo session mới sạch sẽ
         .build());
 
     socket.connect();
@@ -38,9 +37,9 @@ class SocketService {
     socket.onConnectError((err) => print('⚠️ Socket Error: $err'));
   }
 
-  // --- CÁC HÀM GỬI DATA (EMIT) ---
+  // --- 2. CÁC HÀM GỬI DATA (EMIT) ---
 
-  // 1. Tìm trận (Gửi kèm Level và số câu hỏi)
+  // Tìm trận
   void joinQueue({
     required String userId,
     required String username,
@@ -58,7 +57,20 @@ class SocketService {
     });
   }
 
-  // 2. Gửi đáp án
+  // [MỚI] Hủy tìm trận (Khi đang tìm mà muốn dừng lại)
+  void cancelMatching() {
+    print('🚫 Canceling matching...');
+    socket.emit('leave_queue');
+  }
+
+  // [MỚI] Rời phòng / Đầu hàng (Dùng khi người dùng ấn Back lúc đang thi đấu)
+  // Hàm này chỉ báo server là user bỏ cuộc, CHỨ KHÔNG ngắt kết nối socket
+  void leaveRoom(String roomId) {
+    print('🏳️ User leaving room (Surrender): $roomId');
+    socket.emit('leave_room', {'roomId': roomId});
+  }
+
+  // Gửi đáp án
   void submitAnswer(String roomId, bool isCorrect) {
     socket.emit('submit_answer', {
       'roomId': roomId,
@@ -66,7 +78,7 @@ class SocketService {
     });
   }
 
-  // 3. Kết thúc game
+  // Kết thúc game (Hoàn thành tự nhiên)
   void finishGame(String roomId, int timeUsed) {
     socket.emit('finish_game', {
       'roomId': roomId,
@@ -74,31 +86,37 @@ class SocketService {
     });
   }
 
-  // 4. Hủy tìm trận / Thoát game
+  // --- 3. QUẢN LÝ KẾT NỐI (Cẩn thận khi dùng) ---
+
+  // Hàm này CHỈ GỌI khi người dùng Đăng Xuất (Logout) khỏi App
+  // Tuyệt đối không gọi hàm này khi thoát màn hình Game
   void disconnect() {
-    socket.disconnect();
-    _isConnected = false;
+    if (_isConnected) {
+      socket.disconnect();
+      _isConnected = false;
+    }
   }
 
-  // --- CÁC HÀM LẮNG NGHE (LISTENERS) ---
+  // --- 4. CÁC HÀM LẮNG NGHE (LISTENERS) ---
 
-  // Setup lắng nghe sự kiện tìm thấy trận
   void onMatchFound(Function(dynamic data) callback) {
+    // Xóa listener cũ trước khi thêm mới để tránh bị gọi đúp (duplicate events)
+    socket.off('match_found');
     socket.on('match_found', (data) => callback(data));
   }
 
-  // Lắng nghe tiến độ đối thủ
   void onOpponentProgress(Function(dynamic data) callback) {
     socket.on('opponent_progress', (data) => callback(data));
   }
 
-  // Lắng nghe đối thủ thoát
   void onOpponentDisconnected(Function(dynamic data) callback) {
     socket.on('opponent_disconnected', (data) => callback(data));
   }
 
-  // Xóa các sự kiện để tránh bị gọi nhiều lần (memory leak)
+  // Xóa các sự kiện lắng nghe khi rời màn hình game
+  // Chỉ tắt tai nghe, không tắt kết nối
   void offGameEvents() {
+    print('🔇 Removing Game Listeners');
     socket.off('match_found');
     socket.off('opponent_progress');
     socket.off('opponent_disconnected');

@@ -1,4 +1,5 @@
 // lib/app_UI/pvp/find_match_screen.dart
+import 'dart:ui'; // Cần import để dùng BackdropFilter
 import 'package:beelingual_app/connect_api/api_connect.dart';
 import 'package:beelingual_app/connect_api/socket_service.dart';
 import 'package:flutter/material.dart';
@@ -11,7 +12,7 @@ class FindMatchScreen extends StatefulWidget {
   State<FindMatchScreen> createState() => _FindMatchScreenState();
 }
 
-class _FindMatchScreenState extends State<FindMatchScreen> {
+class _FindMatchScreenState extends State<FindMatchScreen> with SingleTickerProviderStateMixin {
   String _selectedLevel = 'A1';
   int _questionCount = 5;
   bool _isSearching = false;
@@ -19,11 +20,30 @@ class _FindMatchScreenState extends State<FindMatchScreen> {
 
   final List<String> _levels = ['A1', 'A2', 'B1', 'B2', 'C1'];
 
+  // Animation controller cho hiệu ứng "thở" (pulse) khi tìm trận
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+
   @override
   void initState() {
     super.initState();
     _initSocketAndListeners();
     _loadUserProfile();
+
+    // Setup Animation
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat(reverse: true);
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
   }
 
   void _initSocketAndListeners() {
@@ -73,16 +93,36 @@ class _FindMatchScreenState extends State<FindMatchScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFFFDF7),
+      extendBodyBehindAppBar: true,
+      appBar: _isSearching
+          ? null
+          : AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text(
+          "PvP Arena",
+          style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
+      ),
       body: Stack(
         children: [
+          // MAIN CONTENT
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _buildHeader(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 30),
                   _buildLevelCard(),
                   const SizedBox(height: 16),
                   _buildQuestionCard(),
@@ -92,6 +132,8 @@ class _FindMatchScreenState extends State<FindMatchScreen> {
               ),
             ),
           ),
+
+          // SEARCHING OVERLAY
           if (_isSearching) _buildSearchingOverlay(),
         ],
       ),
@@ -100,19 +142,128 @@ class _FindMatchScreenState extends State<FindMatchScreen> {
 
   // ================= UI COMPONENT =================
 
+  Widget _buildSearchingOverlay() {
+    return Positioned.fill(
+      child: Stack(
+        children: [
+          // 1. Lớp nền mờ tối
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
+            child: Container(
+              color: Colors.black.withOpacity(0.85),
+            ),
+          ),
+
+          // 2. Nội dung chính giữa
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Avatar Pulse Animation
+                ScaleTransition(
+                  scale: _pulseAnimation,
+                  child: Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFFFFC83D), width: 4),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFFC83D).withOpacity(0.5),
+                          blurRadius: 30,
+                          spreadRadius: 10,
+                        )
+                      ],
+                    ),
+                    // --- SỬA Ở ĐÂY: DÙNG ASSET IMAGE ---
+                    child: const CircleAvatar(
+                      backgroundColor: Colors.white,
+                      // Thay đường dẫn này bằng đường dẫn file ảnh thật của bạn
+                      backgroundImage: AssetImage('assets/Images/logoBee.png'),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 40),
+
+                // Text: Searching
+                const Text(
+                  "Đang tìm đối thủ...",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Info: Level & Question
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    "Cấp độ: $_selectedLevel  •  $_questionCount câu hỏi",
+                    style: const TextStyle(color: Colors.white70, fontSize: 16),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // 3. Nút Hủy to ở dưới cùng
+          Positioned(
+            bottom: 50,
+            left: 20,
+            right: 20,
+            child: ElevatedButton(
+              onPressed: _cancelFindMatch,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                elevation: 5,
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.close_rounded, size: 28),
+                  SizedBox(width: 10),
+                  Text(
+                    "HỦY TÌM KIẾM",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
   Widget _buildHeader() {
     return Column(
       children: const [
-        Icon(Icons.sports_kabaddi, size: 48, color: Color(0xFFFFC83D)),
-        SizedBox(height: 8),
+        Icon(Icons.emoji_events_rounded, size: 60, color: Color(0xFFFFC83D)),
+        SizedBox(height: 10),
         Text(
           "ĐẤU TRƯỜNG PvP",
-          style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
         ),
-        SizedBox(height: 4),
+        SizedBox(height: 6),
         Text(
-          "So tài cùng người chơi khác",
-          style: TextStyle(color: Colors.grey),
+          "Thách đấu thời gian thực",
+          style: TextStyle(color: Colors.grey, fontSize: 16),
         ),
       ],
     );
@@ -123,18 +274,24 @@ class _FindMatchScreenState extends State<FindMatchScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("🎓 Chọn cấp độ thi đấu",
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
+          Row(
+            children: const [
+              Icon(Icons.school_rounded, color: Color(0xFFB58900)),
+              SizedBox(width: 8),
+              Text("Cấp độ thi đấu",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ],
+          ),
+          const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             value: _selectedLevel,
             items: _levels
-                .map((e) =>
-                DropdownMenuItem(value: e, child: Text(e)))
+                .map((e) => DropdownMenuItem(value: e, child: Text("Level $e")))
                 .toList(),
             onChanged:
             _isSearching ? null : (v) => setState(() => _selectedLevel = v!),
             decoration: _inputDecoration(),
+            icon: const Icon(Icons.arrow_drop_down_circle, color: Color(0xFFB58900)),
           ),
         ],
       ),
@@ -146,39 +303,64 @@ class _FindMatchScreenState extends State<FindMatchScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("❓ Số lượng câu hỏi",
-              style: TextStyle(fontWeight: FontWeight.bold)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.quiz_rounded, color: Color(0xFFB58900)),
+                  SizedBox(width: 8),
+                  Text("Số lượng câu hỏi",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF1C1),
+                  border: Border.all(color: const Color(0xFFB58900)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  "$_questionCount câu",
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFB58900)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
           SliderTheme(
             data: SliderTheme.of(context).copyWith(
               activeTrackColor: const Color(0xFFFFC83D),
+              inactiveTrackColor: Colors.grey[300],
               thumbColor: const Color(0xFFFFC83D),
               overlayColor: const Color(0x33FFC83D),
+              trackHeight: 6,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
             ),
             child: Slider(
               value: _questionCount.toDouble(),
               min: 5,
               max: 20,
               divisions: 3,
+              label: "$_questionCount",
               onChanged: _isSearching
                   ? null
                   : (v) => setState(() => _questionCount = v.toInt()),
             ),
           ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Container(
-              padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFC83D),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                "$_questionCount câu",
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: const [
+                Text("5", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                Text("10", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                Text("15", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                Text("20", style: TextStyle(color: Colors.grey, fontSize: 12)),
+              ],
             ),
-          ),
+          )
         ],
       ),
     );
@@ -188,25 +370,36 @@ class _FindMatchScreenState extends State<FindMatchScreen> {
     return GestureDetector(
       onTap: _userProfile != null ? _startFindMatch : null,
       child: Container(
-        height: 56,
+        height: 60,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFFFC83D).withOpacity(0.4),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            )
+          ],
           gradient: const LinearGradient(
             colors: [Color(0xFFFFC83D), Color(0xFFFFA000)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
         ),
         child: const Center(
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.flash_on, color: Colors.white),
-              SizedBox(width: 8),
+              Icon(Icons.bolt_rounded, color: Colors.white, size: 28),
+              SizedBox(width: 10),
               Text(
-                "TÌM TRẬN ĐẤU",
+                "TÌM ĐỐI THỦ NGAY",
                 style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: 1
+                ),
               ),
             ],
           ),
@@ -215,40 +408,18 @@ class _FindMatchScreenState extends State<FindMatchScreen> {
     );
   }
 
-  Widget _buildSearchingOverlay() {
-    return Container(
-      color: Colors.black45,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(color: Colors.white),
-            const SizedBox(height: 16),
-            const Text("Đang tìm đối thủ...",
-                style: TextStyle(color: Colors.white)),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: _cancelFindMatch,
-              child: const Text("Hủy tìm",
-                  style: TextStyle(color: Colors.redAccent)),
-            )
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _goldCard({required Widget child}) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF1C1),
-        borderRadius: BorderRadius.circular(18),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFFFF1C1), width: 2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black12,
-            blurRadius: 8,
-            offset: Offset(0, 4),
+            color: Colors.orange.withOpacity(0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           )
         ],
       ),
@@ -259,9 +430,14 @@ class _FindMatchScreenState extends State<FindMatchScreen> {
   InputDecoration _inputDecoration() {
     return InputDecoration(
       filled: true,
-      fillColor: Colors.white,
+      fillColor: const Color(0xFFFFFBF0),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide.none,
       ),
     );

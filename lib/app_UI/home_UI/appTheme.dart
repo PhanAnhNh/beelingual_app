@@ -16,6 +16,8 @@ class AppTheme {
     LinearGradient(colors: [Color(0xFFFFD54F), Color(0xFFFFF9C4)]), // Vocabulary
     LinearGradient(colors: [Color(0xFFAED581), Color(0xFFE8F5E9)]), // Grammar
     LinearGradient(colors: [Color(0xFF81D4FA), Color(0xFFE1F5FE)]), // Translation
-    LinearGradient(colors: [Color(0xFFFFAB91), Color(0xFFFBE9E7)]), // Listening
+    LinearGradient(colors: [Color(0xFFFFAB91), Color(0xFFFBE9E7)]),
+    LinearGradient(colors: [Color(0xFFE54A4A), Color(0xFFECE7E4)]),
+    // Listening
   ];
 }

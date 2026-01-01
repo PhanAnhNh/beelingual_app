@@ -1,5 +1,6 @@
 import 'package:beelingual_app/app_UI/Matches_UI/find_match_screen.dart';
 import 'package:beelingual_app/app_UI/account/pageAccount.dart';
+import 'package:beelingual_app/app_UI/home_UI/appTheme.dart';
 import 'package:beelingual_app/app_UI/translation_UI/translation_Page.dart';
 import 'package:beelingual_app/app_UI/vocabulary_UI/Dictionary.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +12,9 @@ import 'home_page.dart';
 
 class home_navigation extends StatefulWidget {
   const home_navigation({super.key});
+
+  static final GlobalKey<_home_navigationState> globalKey =
+  GlobalKey<_home_navigationState>();
 
   @override
   State<home_navigation> createState() => _home_navigationState();
@@ -24,9 +28,14 @@ class _home_navigationState extends State<home_navigation> {
 
   bool _dialogShowing = false;
 
+  void switchToCompetition() {
+    setState(() => _selectedIndex = 2);
+  }
+
   void _showExitDialog() {
     if (_dialogShowing) return;
     _dialogShowing = true;
+
 
     showDialog(
       context: context,
@@ -81,7 +90,6 @@ class _home_navigationState extends State<home_navigation> {
             MaterialPageRoute(builder: (_) => const HomePage()),
       ),
       VocabularyLearnedScreen(),
-      FindMatchScreen(),
       PageTranslate(),
       const ProfilePage(),
     ];
@@ -92,37 +100,78 @@ class _home_navigationState extends State<home_navigation> {
         if (didPop) return;
         _handleBack();
       },
-      child: Scaffold(
-        body: IndexedStack(
-          index: _selectedIndex,
-          children: pages,
-        ),
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          selectedItemColor: const Color(0xFF5D4037),
-          unselectedItemColor: Colors.brown.shade300,
-          backgroundColor: const Color(0xFFFFE082),
-          type: BottomNavigationBarType.fixed,
-          onTap: (index) {
-            setState(() => _selectedIndex = index);
-            if (index == 1) {
-              context.read<UserVocabularyProvider>().reloadVocab(context);
-            }
-          },
-          items: const [
-            BottomNavigationBarItem(
-                icon: Icon(Icons.home_rounded), label: "Home"),
-            BottomNavigationBarItem(
-                icon: Icon(Icons.menu_book), label: "Dictionary"),
-            BottomNavigationBarItem(
-                icon: Icon(Icons.sports_mma), label: "Competition"),
-            BottomNavigationBarItem(
-                icon: Icon(Icons.assignment), label: "Translate"),
-            BottomNavigationBarItem(
-                icon: Icon(Icons.person), label: "Account"),
-          ],
-        ),
+      child: Stack(
+        alignment: Alignment.bottomCenter,
+        children: [
+
+          /// MAIN SCAFFOLD
+          Scaffold(
+            body: IndexedStack(
+              index: _selectedIndex,
+              children: pages,
+            ),
+            bottomNavigationBar: BottomNavigationBar(
+              currentIndex: _selectedIndex,
+              selectedItemColor: const Color(0xFF5D4037),
+              unselectedItemColor: Colors.brown.shade300,
+              backgroundColor: const Color(0xFFFFE082),
+              type: BottomNavigationBarType.fixed,
+              onTap: (index) {
+                setState(() => _selectedIndex = index);
+                if (index == 1) {
+                  context.read<UserVocabularyProvider>()
+                      .reloadVocab(context);
+                }
+              },
+              items: const [
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.home_rounded), label: "Home"),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.menu_book), label: "Dictionary"),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.assignment), label: "Translate"),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.person), label: "Account"),
+              ],
+            ),
+          ),
+
+          /// 🔴 NÚT COMPETITION Ở GIỮA
+          Positioned(
+            bottom: 28, // 👈 chỉnh độ nhô lên
+            child: GestureDetector(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => FindMatchScreen(),
+                  ),
+                );
+              },
+              child: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: AppTheme.cardGradients[4],
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.25),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    )
+                  ],
+                ),
+                child: const Icon(
+                  Icons.sports_mma,
+                  color: Colors.white,
+                  size: 32,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
+
   }
 }

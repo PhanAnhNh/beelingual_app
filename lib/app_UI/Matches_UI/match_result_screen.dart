@@ -1,4 +1,5 @@
 // lib/app_UI/pvp/pvp_result_screen.dart
+import 'package:beelingual_app/app_UI/Matches_UI/find_match_screen.dart';
 import 'package:beelingual_app/app_UI/home_UI/bottom_navigation.dart';
 import 'package:flutter/material.dart';
 
@@ -106,8 +107,13 @@ class PvpResultScreen extends StatelessWidget {
                     ),
                   ),
                   onPressed: () {
-                    Navigator.pop(context);
+                    Navigator.of(context, rootNavigator: true).push(
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                FindMatchScreen()),
+                    );
                   },
+
                 ),
               ),
 
