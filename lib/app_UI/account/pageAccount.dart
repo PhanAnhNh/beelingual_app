@@ -1,6 +1,6 @@
-
 import 'package:beelingual_app/app_UI/account/ExchangePassword.dart';
 import 'package:beelingual_app/app_UI/account/account_Information.dart';
+import 'package:beelingual_app/app_UI/account/pvp_result_screen.dart';
 import 'package:beelingual_app/component/profileProvider.dart';
 import 'package:beelingual_app/connect_api/api_connect.dart';
 import 'package:flutter/material.dart';
@@ -23,6 +23,29 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  @override
+  void initState() {
+    super.initState();
+    // Load dữ liệu lần đầu
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = Provider.of<UserProfileProvider>(context, listen: false);
+      // Chỉ fetch nếu chưa có dữ liệu để tránh load thừa
+      if (provider.fullname == "Đang tải...") {
+        provider.fetchProfile(context);
+      } else {
+        // Nếu đã có dữ liệu rồi thì chỉ sync ngầm để cập nhật mới nhất
+        provider.syncProfileInBackground(context);
+      }
+    });
+  }
+
+  // Hàm helper: Gọi đồng bộ ngầm (cập nhật số liệu từ server mà không hiện loading)
+  void _syncData() {
+    if (mounted) {
+      Provider.of<UserProfileProvider>(context, listen: false).syncProfileInBackground(context);
+    }
+  }
+
   void _showSettings() {
     showModalBottomSheet(
       context: context,
@@ -45,9 +68,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 title: const Text("Thông tin cá nhân"),
                 onTap: () {
                   Navigator.pop(context);
+                  // SỬA: Thêm .then() để khi quay lại thì tự động cập nhật
                   Navigator.of(context, rootNavigator: true).push(
-                      MaterialPageRoute(builder: (context) => const AccountInformation())
-                  );
+                    MaterialPageRoute(builder: (context) => const AccountInformation()),
+                  ).then((_) => _syncData());
                 },
               ),
               ListTile(
@@ -56,7 +80,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.of(context, rootNavigator: true).push(
-                      MaterialPageRoute(builder: (context) => ChangePasswordScreen(),)
+                    MaterialPageRoute(builder: (context) => ChangePasswordScreen()),
                   );
                 },
               ),
@@ -64,11 +88,11 @@ class _ProfilePageState extends State<ProfilePage> {
                 leading: const Icon(Icons.logout, color: Colors.red),
                 title: const Text("Đăng xuất", style: TextStyle(color: Colors.red)),
                 onTap: () {
-                  Navigator.pop(context); // Đóng modal
+                  Navigator.pop(context);
                   _handleLogout();
                 },
               ),
-              SizedBox(height: 50,)
+              const SizedBox(height: 50)
             ],
           ),
         );
@@ -101,25 +125,28 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Lắng nghe Provider: Bất cứ khi nào Provider thay đổi (do sync ngầm hoặc do game update),
+    // đoạn code này sẽ chạy lại và hiển thị số mới ngay lập tức.
     final profileProvider = Provider.of<UserProfileProvider>(context);
+
     final fullname = profileProvider.fullname;
     final isLoading = profileProvider.isLoading;
     final email = profileProvider.email;
-    final joinDate = profileProvider.joinDate;
     final currentStreak = profileProvider.currentStreak;
     final xp = profileProvider.xp;
+    final gems = profileProvider.gems;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.transparent, // AppBar trong suốt
+        backgroundColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         systemOverlayStyle: SystemUiOverlayStyle.dark,
         actions: [
           IconButton(
             icon: const Icon(Icons.settings_outlined, color: AppColors.textDark, size: 28),
-            onPressed: _showSettings, // Bấm vào bánh răng để mở cài đặt
+            onPressed: _showSettings,
           ),
           const SizedBox(width: 10),
         ],
@@ -151,7 +178,6 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ),
                         Text(
-                          // Thêm dấu chấm tròn ở giữa cho đẹp giống Duolingo
                           "${email ?? 'Chưa có email'}",
                           style: const TextStyle(color: AppColors.textDark),
                           overflow: TextOverflow.ellipsis,
@@ -165,13 +191,10 @@ class _ProfilePageState extends State<ProfilePage> {
                     height: 80,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.amber, // viền vàng
-                        width: 3, // độ dày viền
-                      ),
-                      image: DecorationImage(
+                      border: Border.all(color: Colors.amber, width: 3),
+                      image: const DecorationImage(
                         image: AssetImage('assets/Images/logoBee.png'),
-                        fit: BoxFit.cover, // tuỳ chỉnh: cover, contain, ...
+                        fit: BoxFit.cover,
                       ),
                     ),
                   ),
@@ -197,9 +220,37 @@ class _ProfilePageState extends State<ProfilePage> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Expanded(child: _buildOverviewCard(Icons.emoji_events, "Chưa tham gia", "Giải đấu hiện tại", Colors.grey)),
+                  Expanded(
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const PvpHistoryScreen(),
+                          ),
+                        ).then((_) {
+                          // SỬA: Khi xem xong giải đấu quay lại -> Tự động cập nhật số liệu mới nhất
+                          _syncData();
+                        });
+                      },
+                      child: _buildOverviewCard(
+                        Icons.emoji_events,
+                        "PVP",
+                        "Giải đấu hiện tại",
+                        Colors.deepPurple,
+                      ),
+                    ),
+                  ),
                   const SizedBox(width: 12),
-                  Expanded(child: _buildOverviewCard(Icons.flag_circle, "10", "Điểm Tiếng Anh", Colors.redAccent)),
+                  Expanded(
+                    child: _buildOverviewCard(
+                      Icons.diamond,
+                      "$gems",
+                      "Gems",
+                      Colors.blueAccent,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 30),
@@ -233,7 +284,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 ],
               ),
               const SizedBox(height: 10),
-              // Giả lập danh sách achievements
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -254,18 +304,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // Widget con: Item thống kê text (Số lượng + Label)
-  Widget _buildStatItem(String count, String label) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(count, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        Text(label, style: const TextStyle(color: AppColors.textDark, fontSize: 12)),
-      ],
-    );
-  }
-
-  // Widget con: Card trong phần Tổng quan
+  // --- Các Widget con giữ nguyên ---
   Widget _buildOverviewCard(IconData icon, String value, String title, Color iconColor) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -291,7 +330,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // Widget con: Badge thành tích
   Widget _buildAchievementBadge(Color color, String badgeText) {
     return Stack(
       clipBehavior: Clip.none,

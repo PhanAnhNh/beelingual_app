@@ -17,6 +17,7 @@ class PvpResultScreen extends StatelessWidget {
     this.isForcedWin = false,
   }) : super(key: key);
 
+
   @override
   Widget build(BuildContext context) {
     // ===== XÁC ĐỊNH KẾT QUẢ =====
@@ -24,6 +25,7 @@ class PvpResultScreen extends StatelessWidget {
     late String subTitle;
     late IconData icon;
     late Color mainColor;
+
 
     if (isForcedWin || myScore > opponentScore) {
       title = "YOU WIN!";
@@ -75,20 +77,9 @@ class PvpResultScreen extends StatelessWidget {
               // ===== CARD TỶ SỐ =====
               _scoreCard(),
 
-              const SizedBox(height: 20),
 
               // ===== XP =====
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 18),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF4D6),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  "⭐ 10 XP | 3 New Words",
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
+
 
               const Spacer(),
 

@@ -1,4 +1,5 @@
 // lib/app_UI/pvp/find_match_screen.dart
+import 'dart:async';
 import 'dart:ui'; // Cần import để dùng BackdropFilter
 import 'package:beelingual_app/connect_api/api_connect.dart';
 import 'package:beelingual_app/connect_api/socket_service.dart';
@@ -17,6 +18,7 @@ class _FindMatchScreenState extends State<FindMatchScreen> with SingleTickerProv
   int _questionCount = 5;
   bool _isSearching = false;
   Map<String, dynamic>? _userProfile;
+  Timer? _botRequestTimer;
 
   final List<String> _levels = ['A1', 'A2', 'B1', 'B2', 'C1'];
 
@@ -43,6 +45,7 @@ class _FindMatchScreenState extends State<FindMatchScreen> with SingleTickerProv
   @override
   void dispose() {
     _pulseController.dispose();
+    _botRequestTimer?.cancel(); // Hủy timer nếu thoát màn hình
     super.dispose();
   }
 
@@ -74,6 +77,7 @@ class _FindMatchScreenState extends State<FindMatchScreen> with SingleTickerProv
     if (_userProfile == null) return;
     setState(() => _isSearching = true);
 
+    // 1. Gửi yêu cầu tìm trận bình thường
     SocketService().joinQueue(
       userId: _userProfile!['_id'],
       username: _userProfile!['username'] ?? 'Unknown',
@@ -81,10 +85,22 @@ class _FindMatchScreenState extends State<FindMatchScreen> with SingleTickerProv
       level: _selectedLevel,
       questionCount: _questionCount,
     );
+
+    // 2. --- SỬA Ở ĐÂY: Đếm ngược 10-15 giây để gọi Bot ---
+    _botRequestTimer?.cancel();
+    _botRequestTimer = Timer(const Duration(seconds: 12), () {
+      // Nếu sau 12 giây vẫn đang tìm (_isSearching == true)
+      if (_isSearching && mounted) {
+        print("Đợi lâu quá, chuyển sang đấu với Bot...");
+        // Gọi hàm mới trong SocketService (bạn cần thêm hàm này vào file socket)
+        SocketService().requestBotMatch();
+      }
+    });
   }
 
   void _cancelFindMatch() {
     SocketService().disconnect();
+    _botRequestTimer?.cancel(); // Hủy timer bot
     setState(() => _isSearching = false);
     _initSocketAndListeners();
   }
@@ -101,8 +117,11 @@ class _FindMatchScreenState extends State<FindMatchScreen> with SingleTickerProv
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            Navigator.of(context).popUntil((route) => route.isFirst);
+          },
         ),
+
         title: const Text(
           "PvP Arena",
           style: TextStyle(

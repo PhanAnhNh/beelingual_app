@@ -71,20 +71,20 @@ class SocketService {
   }
 
   // Gửi đáp án
-  void submitAnswer(String roomId, bool isCorrect) {
+  void submitAnswer(String roomId, String answer) {
     socket.emit('submit_answer', {
       'roomId': roomId,
-      'isCorrect': isCorrect,
+      'answer': answer,
     });
   }
 
-  // Kết thúc game (Hoàn thành tự nhiên)
-  void finishGame(String roomId, int timeUsed) {
-    socket.emit('finish_game', {
-      'roomId': roomId,
-      'timeUsed': timeUsed,
-    });
+
+
+  void onGameFinished(Function(dynamic data) callback) {
+    socket.off('game_finished');
+    socket.on('game_finished', (data) => callback(data));
   }
+
 
   // --- 3. QUẢN LÝ KẾT NỐI (Cẩn thận khi dùng) ---
 
@@ -113,11 +113,24 @@ class SocketService {
     socket.on('opponent_disconnected', (data) => callback(data));
   }
 
+  void requestBotMatch() {
+    // Gửi sự kiện lên server.
+    // Server cần bắt sự kiện 'request_bot' và gọi hàm joinWithBot(matchId)
+    // Lưu ý: Client cần gửi kèm matchId hoặc userId để server biết ai đang đợi.
+    socket.emit('join_with_bot', {});
+  }
+
+  void onNextQuestion(Function(dynamic data) callback) {
+    socket.off('next_question');
+    socket.on('next_question', (data) => callback(data));
+  }
+
   // Xóa các sự kiện lắng nghe khi rời màn hình game
   // Chỉ tắt tai nghe, không tắt kết nối
   void offGameEvents() {
     print('🔇 Removing Game Listeners');
     socket.off('match_found');
+    socket.off('next_question');
     socket.off('opponent_progress');
     socket.off('opponent_disconnected');
   }

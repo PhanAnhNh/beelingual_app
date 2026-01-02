@@ -28,8 +28,8 @@ class _PvpGameScreenState extends State<PvpGameScreen> with TickerProviderStateM
 
   // --- LOGIC ---
   Timer? _questionTimer;
-  final int _maxTimePerQuestion = 15;
-  int _timeLeft = 15;
+  late int _maxTimePerQuestion; // Sẽ lấy từ server
+  late int _timeLeft;
 
   bool _hasAnswered = false;
   String? _selectedAnswerKey;
@@ -41,59 +41,128 @@ class _PvpGameScreenState extends State<PvpGameScreen> with TickerProviderStateM
   final Color _accentColor = const Color(0xFFFFD056); // Vàng cam (cho điểm số/timer)
   final Color _bgColor = const Color(0xFFF0F3F9); // Xám xanh nhạt
 
+  // Trong _PvpGameScreenState
+
   @override
   void initState() {
     super.initState();
-    _roomId = widget.matchData['roomId'];
+    _roomId = widget.matchData['roomId'] ?? 'unknown_room';
 
-    List<dynamic> rawQuestions = widget.matchData['questions'];
-    _questions = rawQuestions.map((q) => Exercises.fromJson(q)).toList();
+    // --- SỬA LẠI ĐOẠN NÀY ---
+    // 1. Cố gắng lấy questions từ dữ liệu tìm trận trước
+    List<dynamic> rawQuestions = widget.matchData['questions'] ?? [];
 
+    // 2. Parse dữ liệu
+    try {
+      _questions = rawQuestions.map((q) => Exercises.fromJson(q)).toList();
+    } catch (e) {
+      print("⚠️ Lỗi parse câu hỏi ban đầu: $e");
+      _questions = [];
+    }
+
+    _maxTimePerQuestion = widget.matchData['timePerQuestion'] ?? 15;
+    _timeLeft = _maxTimePerQuestion;
+
+    // ... (Giữ nguyên đoạn xử lý tên người chơi p1, p2) ...
     var p1 = widget.matchData['player1'];
     var p2 = widget.matchData['player2'];
-    if (p1['userId'] == widget.myUserId) {
-      _opponentName = p2['username'];
+    // ... (Code cũ của bạn) ...
+    if (p1 != null && p2 != null) {
+      // ... xử lý tên ...
+      if (p2['username'] == 'bot_ai') {
+        _opponentName = "Beelingual Bot";
+      } else {
+        _opponentName = (p1['userId'] == widget.myUserId)
+            ? (p2['username'] ?? "Đối thủ")
+            : (p1['username'] ?? "Đối thủ");
+      }
     } else {
-      _opponentName = p1['username'];
+      _opponentName = "Đang chờ...";
     }
 
     _setupSocketListeners();
-    _startQuestionTimer();
+
+    // Nếu có câu hỏi rồi thì chạy luôn, không chờ socket nữa
+    if (_questions.isNotEmpty) {
+      _startQuestionTimer();
+    }
   }
 
   void _setupSocketListeners() {
-    SocketService().onOpponentProgress((data) {
-      if (mounted) {
+    // --- SỬA LẠI HÀM NÀY ĐỂ TRÁNH CRASH ---
+    SocketService().onNextQuestion((data) {
+      if (!mounted) return;
+
+      print("📩 Socket received Next Question: $data");
+
+      if (data == null || data['content'] == null) {
+        print("❌ Dữ liệu câu hỏi bị Null!");
+        return;
+      }
+
+      try {
+        final question = Exercises.fromJson(data['content']);
+
         setState(() {
-          _opponentScore = data['currentScore'];
+          if (!_questions.any((q) => q.id == question.id)) {
+            _questions.add(question);
+          }
+
+          _currentQuestionIndex = (data['questionIndex'] ?? 1) - 1;
+          _maxTimePerQuestion = data['timeLimit'] ?? 10;
+          _timeLeft = _maxTimePerQuestion;
+          _hasAnswered = false;
+          _selectedAnswerKey = null;
         });
+
+        _startQuestionTimer();
+      } catch (e) {
+        print("❌ LỖI PARSE JSON TỪ SOCKET: $e");
       }
     });
+    SocketService().onGameFinished((data) {
+      if (!mounted) return;
 
-    SocketService().onOpponentDisconnected((data) {
-      _finishGame(forcedWin: true);
+      final players = data['players'];
+
+      players.forEach((_, p) {
+        if (p['userId'] == widget.myUserId) {
+          _myScore = p['score'];
+        } else {
+          _opponentScore = p['score'];
+        }
+      });
+
+      _finishGame();
     });
+
   }
 
+
+
+  // Bỏ tham số {required int duration} đi
   void _startQuestionTimer() {
+    // Sử dụng trực tiếp biến _maxTimePerQuestion đã lấy từ server
     _timeLeft = _maxTimePerQuestion;
     _hasAnswered = false;
     _selectedAnswerKey = null;
 
     _questionTimer?.cancel();
     _questionTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
-        setState(() {
-          if (_timeLeft > 0) {
-            _timeLeft--;
-          } else {
-            timer.cancel();
-            _moveToNextQuestion();
-          }
-        });
-      }
+      if (!mounted) return;
+
+      setState(() {
+        if (_timeLeft > 0) {
+          _timeLeft--;
+        } else {
+          timer.cancel();
+          // ⛔ KHÔNG LÀM GÌ CẢ
+          // CHỜ SERVER EMIT next_question
+        }
+      });
     });
   }
+
 
   void _onAnswer(String selectedOptionText) {
     if (_hasAnswered || _isFinished) return;
@@ -112,24 +181,18 @@ class _PvpGameScreenState extends State<PvpGameScreen> with TickerProviderStateM
       });
     }
 
-    SocketService().submitAnswer(_roomId, isCorrect);
-  }
+    SocketService().submitAnswer(
+      _roomId,
+      _selectedAnswerKey!, // text đáp án
+    );
 
-  void _moveToNextQuestion() {
-    if (_currentQuestionIndex < _questions.length - 1) {
-      setState(() {
-        _currentQuestionIndex++;
-      });
-      _startQuestionTimer();
-    } else {
-      _finishGame();
-    }
   }
 
   void _finishGame({bool forcedWin = false}) {
-    _questionTimer?.cancel();
+    if (_isFinished) return; // 👈 CHỐT CUỐI
     _isFinished = true;
-    SocketService().finishGame(_roomId, _questions.length * _maxTimePerQuestion);
+
+    _questionTimer?.cancel();
     SocketService().offGameEvents();
 
     Navigator.pushReplacement(
@@ -144,6 +207,7 @@ class _PvpGameScreenState extends State<PvpGameScreen> with TickerProviderStateM
       ),
     );
   }
+
 
   void _handleSurrender() {
     _questionTimer?.cancel();
@@ -194,7 +258,18 @@ class _PvpGameScreenState extends State<PvpGameScreen> with TickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
+    if (_questions.isEmpty) {
+      return Scaffold(
+        backgroundColor: _bgColor,
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+
     Exercises question = _questions[_currentQuestionIndex];
+
 
     return WillPopScope(
       onWillPop: _onWillPop,

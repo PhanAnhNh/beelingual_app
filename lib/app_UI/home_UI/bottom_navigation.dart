@@ -32,6 +32,11 @@ class _home_navigationState extends State<home_navigation> {
     setState(() => _selectedIndex = 2);
   }
 
+  void goHome() {
+    setState(() => _selectedIndex = 0);
+  }
+
+
   void _showExitDialog() {
     if (_dialogShowing) return;
     _dialogShowing = true;
