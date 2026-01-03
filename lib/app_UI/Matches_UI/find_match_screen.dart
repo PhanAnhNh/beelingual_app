@@ -1,6 +1,7 @@
 // lib/app_UI/pvp/find_match_screen.dart
 import 'dart:async';
 import 'dart:ui'; // Cần import để dùng BackdropFilter
+import 'package:beelingual_app/app_UI/home_UI/bottom_navigation.dart';
 import 'package:beelingual_app/component/profileProvider.dart';
 import 'package:beelingual_app/connect_api/api_connect.dart';
 import 'package:beelingual_app/connect_api/socket_service.dart';
@@ -109,61 +110,73 @@ class _FindMatchScreenState extends State<FindMatchScreen> with SingleTickerProv
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFFFDF7),
-      extendBodyBehindAppBar: true,
-      appBar: _isSearching
-          ? null
-          : AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () {
-            Provider.of<UserProfileProvider
-            >(
-              context,
-              listen: false,
-            ).syncProfileInBackground(context);
-
-            Navigator.of(context).popUntil((route) => route.isFirst);
-          },
-
-        ),
-
-        title: const Text(
-          "PvP Arena",
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
+    return WillPopScope(
+      onWillPop: ()async{
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const home_navigation(),
           ),
-        ),
-        centerTitle: true,
-      ),
-      body: Stack(
-        children: [
-          // MAIN CONTENT
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildHeader(),
-                  const SizedBox(height: 30),
-                  _buildLevelCard(),
-                  const SizedBox(height: 16),
-                  _buildQuestionCard(),
-                  const Spacer(),
-                  _buildFindButton(),
-                ],
-              ),
+              (route) => false,
+        );
+        return false; // ❗ chặn pop mặc định
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFFFFDF7),
+        extendBodyBehindAppBar: true,
+        appBar: _isSearching
+            ? null
+            : AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.black),
+            onPressed: () {
+              Provider.of<UserProfileProvider
+              >(
+                context,
+                listen: false,
+              ).syncProfileInBackground(context);
+
+              Navigator.of(context).popUntil((route) => route.isFirst);
+            },
+
+          ),
+
+          title: const Text(
+            "PvP Arena",
+            style: TextStyle(
+              color: Colors.black,
+              fontWeight: FontWeight.bold,
             ),
           ),
+          centerTitle: true,
+        ),
+        body: Stack(
+          children: [
+            // MAIN CONTENT
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildHeader(),
+                    const SizedBox(height: 30),
+                    _buildLevelCard(),
+                    const SizedBox(height: 16),
+                    _buildQuestionCard(),
+                    const Spacer(),
+                    _buildFindButton(),
+                  ],
+                ),
+              ),
+            ),
 
-          // SEARCHING OVERLAY
-          if (_isSearching) _buildSearchingOverlay(),
-        ],
+            // SEARCHING OVERLAY
+            if (_isSearching) _buildSearchingOverlay(),
+          ],
+        ),
       ),
     );
   }

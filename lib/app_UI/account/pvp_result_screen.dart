@@ -44,10 +44,13 @@ class _PvpHistoryScreenState extends State<PvpHistoryScreen> {
     }
   }
 
+  // Trong _PvpHistoryScreenState
+
   Future<void> _fetchMatchHistory() async {
     try {
       final token = await _session.getAccessToken();
 
+      // Gọi API không cần tham số (mặc định page 1)
       final response = await http.get(
         Uri.parse('$urlAPI/api/matches/history'),
         headers: {
@@ -57,17 +60,26 @@ class _PvpHistoryScreenState extends State<PvpHistoryScreen> {
       );
 
       if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+
         setState(() {
-          _matchHistory = jsonDecode(response.body);
+          // --- SỬA Ở ĐÂY ---
+          // API trả về { data: [...], pagination: ... }
+          // Nên ta phải lấy key ['data']
+          _matchHistory = jsonResponse['data'];
           _loading = false;
         });
       } else {
-        _errorMessage = "Lỗi tải lịch sử: ${response.statusCode}";
-        _loading = false;
+        setState(() {
+          _errorMessage = "Lỗi tải lịch sử: ${response.statusCode}";
+          _loading = false;
+        });
       }
     } catch (e) {
-      _errorMessage = "Lỗi kết nối: $e";
-      _loading = false;
+      setState(() {
+        _errorMessage = "Lỗi kết nối: $e";
+        _loading = false;
+      });
     }
   }
 
