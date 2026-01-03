@@ -22,176 +22,297 @@ class _PvpGameScreenState extends State<PvpGameScreen> with TickerProviderStateM
   late String _roomId;
   late String _opponentName;
 
+  // Điểm số và trạng thái
   int _currentQuestionIndex = 0;
   int _myScore = 0;
   int _opponentScore = 0;
 
-  // --- LOGIC ---
+  // Logic Timer
   Timer? _questionTimer;
-  late int _maxTimePerQuestion; // Sẽ lấy từ server
-  late int _timeLeft;
+  int _maxTimePerQuestion = 15;
+  int _timeLeft = 15;
 
+  // Logic Trả lời
   bool _hasAnswered = false;
   String? _selectedAnswerKey;
   bool _isFinished = false;
 
-  // Colors Palette
-  final Color _primaryColor = const Color(0xFF6A5AE0); // Tím đậm
-  final Color _secondaryColor = const Color(0xFF9087E5); // Tím nhạt
-  final Color _accentColor = const Color(0xFFFFD056); // Vàng cam (cho điểm số/timer)
-  final Color _bgColor = const Color(0xFFF0F3F9); // Xám xanh nhạt
+  // Biến kiểm soát Dialog kết quả vòng
+  bool _isShowingRoundResult = false;
 
-  // Trong _PvpGameScreenState
+  // Colors Palette
+  final Color _primaryColor = const Color(0xFF6A5AE0);
+  final Color _secondaryColor = const Color(0xFF9087E5);
+  final Color _bgColor = const Color(0xFFF0F3F9);
 
   @override
   void initState() {
     super.initState();
     _roomId = widget.matchData['roomId'] ?? 'unknown_room';
 
-    // --- SỬA LẠI ĐOẠN NÀY ---
-    // 1. Cố gắng lấy questions từ dữ liệu tìm trận trước
+    // Parse Questions
     List<dynamic> rawQuestions = widget.matchData['questions'] ?? [];
-
-    // 2. Parse dữ liệu
     try {
       _questions = rawQuestions.map((q) => Exercises.fromJson(q)).toList();
     } catch (e) {
-      print("⚠️ Lỗi parse câu hỏi ban đầu: $e");
       _questions = [];
     }
 
     _maxTimePerQuestion = widget.matchData['timePerQuestion'] ?? 15;
     _timeLeft = _maxTimePerQuestion;
 
-    // ... (Giữ nguyên đoạn xử lý tên người chơi p1, p2) ...
+    // Parse User Names
     var p1 = widget.matchData['player1'];
     var p2 = widget.matchData['player2'];
-    // ... (Code cũ của bạn) ...
     if (p1 != null && p2 != null) {
-      // ... xử lý tên ...
-      if (p2['username'] == 'bot_ai') {
-        _opponentName = "Beelingual Bot";
+      if (p2['username'] == 'Mr. Robot 🤖' || p2['userId'] == 'BOT_ID') {
+        _opponentName = "Mr. Robot 🤖";
       } else {
         _opponentName = (p1['userId'] == widget.myUserId)
             ? (p2['username'] ?? "Đối thủ")
             : (p1['username'] ?? "Đối thủ");
       }
     } else {
-      _opponentName = "Đang chờ...";
+      _opponentName = "Đối thủ";
     }
 
     _setupSocketListeners();
 
-    // Nếu có câu hỏi rồi thì chạy luôn, không chờ socket nữa
     if (_questions.isNotEmpty) {
       _startQuestionTimer();
     }
   }
 
   void _setupSocketListeners() {
-    // --- SỬA LẠI HÀM NÀY ĐỂ TRÁNH CRASH ---
-    SocketService().onNextQuestion((data) {
-      if (!mounted) return;
+    final socket = SocketService();
 
-      print("📩 Socket received Next Question: $data");
+    // 1. Nhận kết quả vòng đấu (Show Popup)
+    socket.onRoundResult((data) {
+      if (!mounted || _isFinished) return;
+      print("🏆 Round Result: $data");
 
-      if (data == null || data['content'] == null) {
-        print("❌ Dữ liệu câu hỏi bị Null!");
-        return;
-      }
+      // Dừng timer đếm ngược câu hỏi
+      _questionTimer?.cancel();
 
-      try {
-        final question = Exercises.fromJson(data['content']);
+      // Phân tích dữ liệu điểm
+      String correctAnswer = data['correctAnswer'];
+      List<dynamic> players = data['players'];
 
-        setState(() {
-          if (!_questions.any((q) => q.id == question.id)) {
-            _questions.add(question);
-          }
+      int myRoundPoints = 0;
+      int oppRoundPoints = 0;
+      bool amICorrect = false;
 
-          _currentQuestionIndex = (data['questionIndex'] ?? 1) - 1;
-          _maxTimePerQuestion = data['timeLimit'] ?? 10;
-          _timeLeft = _maxTimePerQuestion;
-          _hasAnswered = false;
-          _selectedAnswerKey = null;
-        });
+      // Cập nhật điểm tổng ngay lập tức
+      for (var p in players) {
+        String pId = p['userId'].toString();
+        int totalScore = (p['totalScore'] is int) ? p['totalScore'] : int.parse(p['totalScore'].toString());
+        int addedScore = (p['addedScore'] is int) ? p['addedScore'] : int.parse(p['addedScore'].toString());
 
-        _startQuestionTimer();
-      } catch (e) {
-        print("❌ LỖI PARSE JSON TỪ SOCKET: $e");
-      }
-    });
-    SocketService().onGameFinished((data) {
-      if (!mounted) return;
-
-      final players = data['players'];
-
-      players.forEach((_, p) {
-        if (p['userId'] == widget.myUserId) {
-          _myScore = p['score'];
+        if (pId == widget.myUserId) {
+          _myScore = totalScore;
+          myRoundPoints = addedScore;
+          amICorrect = p['isCorrect'];
         } else {
-          _opponentScore = p['score'];
+          _opponentScore = totalScore;
+          oppRoundPoints = addedScore;
         }
+      }
+
+      setState(() {}); // Rebuild để cập nhật điểm trên Header
+
+      // Hiển thị Popup kết quả (đợi 3s trước khi server gửi next_question)
+      _showRoundResultDialog(correctAnswer, myRoundPoints, oppRoundPoints, amICorrect);
+    });
+
+    // 2. Chuyển câu hỏi mới
+    socket.onNextQuestion((data) {
+      if (!mounted) return;
+
+      // Nếu Popup đang hiện thì tắt nó đi
+      if (_isShowingRoundResult && Navigator.canPop(context)) {
+        Navigator.pop(context);
+        _isShowingRoundResult = false;
+      }
+
+      final question = Exercises.fromJson(data['content']);
+
+      setState(() {
+        _currentQuestionIndex = (data['questionIndex'] ?? 1) - 1;
+
+        // Cập nhật/Thêm câu hỏi vào list (đề phòng list ban đầu thiếu)
+        if (_questions.length <= _currentQuestionIndex) {
+          _questions.add(question);
+        } else {
+          _questions[_currentQuestionIndex] = question;
+        }
+
+        // Reset
+        _maxTimePerQuestion = data['timeLimit'] ?? 10;
+        _timeLeft = _maxTimePerQuestion;
+        _hasAnswered = false;
+        _selectedAnswerKey = null;
       });
 
+      _startQuestionTimer();
+    });
+
+    // 3. Đối thủ trả lời xong (cập nhật tiến độ realtime nếu muốn)
+    socket.onOpponentProgress((data) {
+      if (!mounted) return;
+      if (data['opponentId'].toString() != widget.myUserId) {
+        // Có thể hiển thị animation đối thủ đã xong, nhưng chưa cộng điểm thật
+        // Điểm thật sẽ cập nhật ở round_result
+      }
+    });
+
+    // 4. Kết thúc game
+    socket.onGameFinished((data) {
+      if (!mounted) return;
+      // Đảm bảo đóng popup nếu còn
+      if (_isShowingRoundResult && Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
       _finishGame();
     });
 
+    // 5. Đối thủ thoát
+    socket.onOpponentDisconnected((data) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(data['message'])));
+      _finishGame(forcedWin: true);
+    });
   }
 
-
-
-  // Bỏ tham số {required int duration} đi
   void _startQuestionTimer() {
-    // Sử dụng trực tiếp biến _maxTimePerQuestion đã lấy từ server
-    _timeLeft = _maxTimePerQuestion;
-    _hasAnswered = false;
-    _selectedAnswerKey = null;
-
     _questionTimer?.cancel();
     _questionTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
-
       setState(() {
         if (_timeLeft > 0) {
           _timeLeft--;
         } else {
           timer.cancel();
-          // ⛔ KHÔNG LÀM GÌ CẢ
-          // CHỜ SERVER EMIT next_question
+          // Hết giờ -> Không làm gì cả, chờ Server gửi round_result
         }
       });
     });
   }
 
+  // lib/app_UI/pvp/pvp_game_screen.dart
 
-  void _onAnswer(String selectedOptionText) {
+  void _onAnswer(int optionIndex) {
     if (_hasAnswered || _isFinished) return;
+
+    Exercises currentQuestion = _questions[_currentQuestionIndex];
+    final answerText = currentQuestion.options[optionIndex].text;
+    // --------------------
 
     setState(() {
       _hasAnswered = true;
-      _selectedAnswerKey = selectedOptionText;
+      _selectedAnswerKey = String.fromCharCode(65 + optionIndex); // Vẫn giữ key A/B/C để highlight UI
     });
 
-    var currentQ = _questions[_currentQuestionIndex];
-    bool isCorrect = selectedOptionText == currentQ.correctAnswer;
-
-    if (isCorrect) {
-      setState(() {
-        _myScore += 10;
-      });
-    }
-
+    // Gửi text lên server
     SocketService().submitAnswer(
       _roomId,
-      _selectedAnswerKey!, // text đáp án
+      answerText, // Gửi "Màu đỏ"
     );
+  }
 
+  // --- HIỂN THỊ POPUP KẾT QUẢ VÒNG ---
+  void _showRoundResultDialog(String correctAnswer, int myPts, int oppPts, bool amICorrect) {
+    _isShowingRoundResult = true;
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Không cho bấm ra ngoài
+      builder: (context) {
+        return WillPopScope(
+          onWillPop: () async => false, // Chặn nút back
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.all(20),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                          color: amICorrect ? Colors.green : Colors.redAccent,
+                          width: 4
+                      )
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Tiêu đề
+                      Text(
+                        amICorrect ? "CHÍNH XÁC! 🎉" : "SAI RỒI! 😢",
+                        style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: amICorrect ? Colors.green : Colors.red
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Đáp án đúng
+                      Text("Đáp án đúng:", style: TextStyle(color: Colors.grey[600])),
+                      Text(
+                        correctAnswer,
+                        style: const TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87
+                        ),
+                      ),
+                      const Divider(height: 30),
+
+                      // Điểm số nhận được
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildRoundScoreItem("Tôi", myPts, true),
+                          Container(width: 1, height: 40, color: Colors.grey[300]),
+                          _buildRoundScoreItem(_opponentName, oppPts, false),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      const LinearProgressIndicator(), // Loading bar chờ câu tiếp
+                      const SizedBox(height: 5),
+                      const Text("Câu tiếp theo trong 3s...", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    ).then((_) => _isShowingRoundResult = false);
+  }
+
+  Widget _buildRoundScoreItem(String name, int points, bool isMe) {
+    return Column(
+      children: [
+        Text(name, style: TextStyle(fontWeight: FontWeight.bold, color: isMe ? _primaryColor : Colors.black54)),
+        const SizedBox(height: 5),
+        Text(
+          "+$points",
+          style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: points > 0 ? Colors.amber : Colors.grey
+          ),
+        )
+      ],
+    );
   }
 
   void _finishGame({bool forcedWin = false}) {
-    if (_isFinished) return; // 👈 CHỐT CUỐI
+    if (_isFinished) return;
     _isFinished = true;
-
     _questionTimer?.cancel();
     SocketService().offGameEvents();
 
@@ -208,45 +329,26 @@ class _PvpGameScreenState extends State<PvpGameScreen> with TickerProviderStateM
     );
   }
 
-
   void _handleSurrender() {
     _questionTimer?.cancel();
     SocketService().leaveRoom(_roomId);
     SocketService().offGameEvents();
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => const HomePage()),
-          (route) => false, // Xóa hết lịch sử cũ để không bấm Back quay lại game được
-    );
+    Navigator.pop(context); // Thoát màn hình
   }
 
   Future<bool> _onWillPop() async {
-    bool? shouldLeave = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text("Cảnh báo", style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text("Thoát bây giờ bạn sẽ bị xử thua. Bạn chắc chắn chứ?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text("Ở lại", style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text("Thoát", style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-
-    if (shouldLeave == true) {
-      _handleSurrender();
-      return true;
-    }
-    return false;
+    // (Giữ nguyên logic cảnh báo thoát game)
+    return await showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text("Cảnh báo"),
+          content: const Text("Thoát bây giờ bạn sẽ bị xử thua."),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Ở lại")),
+            TextButton(onPressed: () { _handleSurrender(); Navigator.pop(ctx, true); }, child: const Text("Thoát", style: TextStyle(color: Colors.red))),
+          ],
+        )
+    ) ?? false;
   }
 
   @override
@@ -258,18 +360,12 @@ class _PvpGameScreenState extends State<PvpGameScreen> with TickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    if (_questions.isEmpty) {
-      return Scaffold(
-        backgroundColor: _bgColor,
-        body: const Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
+    // Loading ban đầu
+    if (_questions.isEmpty || _currentQuestionIndex >= _questions.length) {
+      return Scaffold(backgroundColor: _bgColor, body: const Center(child: CircularProgressIndicator()));
     }
 
-
     Exercises question = _questions[_currentQuestionIndex];
-
 
     return WillPopScope(
       onWillPop: _onWillPop,
@@ -278,7 +374,7 @@ class _PvpGameScreenState extends State<PvpGameScreen> with TickerProviderStateM
         body: SafeArea(
           child: Column(
             children: [
-              // 1. Header Area (Custom)
+              // 1. Header (Updated Score)
               _buildHeader(),
 
               // 2. Progress Bar
@@ -295,14 +391,14 @@ class _PvpGameScreenState extends State<PvpGameScreen> with TickerProviderStateM
                 ),
               ),
 
-              // 3. Main Content
+              // 3. Question & Options
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
                     children: [
                       const SizedBox(height: 10),
-                      // Question Card
+                      // Card Câu hỏi
                       Expanded(
                         flex: 4,
                         child: Container(
@@ -311,65 +407,36 @@ class _PvpGameScreenState extends State<PvpGameScreen> with TickerProviderStateM
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.1),
-                                blurRadius: 10,
-                                offset: const Offset(0, 5),
-                              ),
-                            ],
+                            boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))],
                           ),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text(
-                                "Câu hỏi ${_currentQuestionIndex + 1}",
-                                style: TextStyle(
-                                  color: _secondaryColor,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
+                              Text("Câu hỏi ${_currentQuestionIndex + 1}", style: TextStyle(color: _secondaryColor, fontWeight: FontWeight.bold)),
                               const SizedBox(height: 16),
-                              Text(
-                                question.questionText,
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black87,
-                                  height: 1.3,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
+                              Text(question.questionText, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
                             ],
                           ),
                         ),
                       ),
 
-                      // Waiting Indicator
+                      // Trạng thái chờ
                       if (_hasAnswered)
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: _primaryColor)
-                              ),
+                              SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: _primaryColor)),
                               const SizedBox(width: 8),
-                              const Text(
-                                "Đợi đối thủ...",
-                                style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
-                              ),
+                              const Text("Đang chờ đối thủ...", style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)),
                             ],
                           ),
                         )
                       else
                         const SizedBox(height: 32),
 
-                      // Options List
+                      // Đáp án
                       Expanded(
                         flex: 6,
                         child: SingleChildScrollView(
@@ -398,24 +465,19 @@ class _PvpGameScreenState extends State<PvpGameScreen> with TickerProviderStateM
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
       decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Player (Me)
-          _buildPlayerProfile("Tôi", _myScore, isMe: true),
+          _buildPlayerProfile("Tôi", _myScore, isMe: true), // Điểm cập nhật realtime từ round_result
 
-          // Timer (Center)
+          // Timer
           Stack(
             alignment: Alignment.center,
             children: [
               SizedBox(
-                width: 60,
-                height: 60,
+                width: 60, height: 60,
                 child: CircularProgressIndicator(
                   value: _timeLeft / _maxTimePerQuestion,
                   strokeWidth: 6,
@@ -423,18 +485,10 @@ class _PvpGameScreenState extends State<PvpGameScreen> with TickerProviderStateM
                   color: _timeLeft <= 5 ? Colors.red : _primaryColor,
                 ),
               ),
-              Text(
-                "$_timeLeft",
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: _timeLeft <= 5 ? Colors.red : _primaryColor,
-                ),
-              ),
+              Text("$_timeLeft", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: _timeLeft <= 5 ? Colors.red : _primaryColor)),
             ],
           ),
 
-          // Opponent
           _buildPlayerProfile(_opponentName, _opponentScore, isMe: false),
         ],
       ),
@@ -450,31 +504,23 @@ class _PvpGameScreenState extends State<PvpGameScreen> with TickerProviderStateM
           child: Text(
             name.isNotEmpty ? name[0].toUpperCase() : "?",
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+              fontSize: 20, fontWeight: FontWeight.bold,
               color: isMe ? _primaryColor : Colors.redAccent,
             ),
           ),
         ),
         const SizedBox(height: 6),
-        Text(
-          name.length > 8 ? "${name.substring(0, 7)}..." : name,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-        ),
+        Text(name.length > 8 ? "${name.substring(0, 7)}..." : name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           margin: const EdgeInsets.only(top: 4),
           decoration: BoxDecoration(
             color: isMe ? _primaryColor : Colors.redAccent,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
-            "$score",
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-            ),
+            "$score", // Giá trị này sẽ đổi khi nhận round_result
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
           ),
         )
       ],
@@ -482,23 +528,17 @@ class _PvpGameScreenState extends State<PvpGameScreen> with TickerProviderStateM
   }
 
   Widget _buildOptionButton(int index, Option opt) {
-    String label = String.fromCharCode(65 + index); // A, B, C, D
-    bool isSelected = _hasAnswered && opt.text == _selectedAnswerKey;
+    String label = String.fromCharCode(65 + index);
+    bool isSelected = _hasAnswered && label == _selectedAnswerKey;
 
-    Color bgColor = Colors.white;
-    Color borderColor = Colors.grey.shade200;
-    Color textColor = Colors.black87;
-
-    if (isSelected) {
-      bgColor = _primaryColor.withOpacity(0.1);
-      borderColor = _primaryColor;
-      textColor = _primaryColor;
-    }
+    // Màu sắc chỉ mang tính chất highlight lựa chọn của mình (chưa biết đúng sai)
+    Color bgColor = isSelected ? _primaryColor.withOpacity(0.1) : Colors.white;
+    Color borderColor = isSelected ? _primaryColor : Colors.grey.shade200;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: InkWell(
-        onTap: _hasAnswered ? null : () => _onAnswer(opt.text),
+        onTap: _hasAnswered ? null : () => _onAnswer(index),
         borderRadius: BorderRadius.circular(16),
         child: Container(
           width: double.infinity,
@@ -507,44 +547,21 @@ class _PvpGameScreenState extends State<PvpGameScreen> with TickerProviderStateM
             color: bgColor,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: borderColor, width: 2),
-            boxShadow: _hasAnswered ? [] : [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.05),
-                blurRadius: 5,
-                offset: const Offset(0, 4),
-              )
-            ],
           ),
           child: Row(
             children: [
-              // Label Circle (A, B, C, D)
               Container(
-                width: 32,
-                height: 32,
+                width: 32, height: 32,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: isSelected ? _primaryColor : Colors.grey[100],
                   shape: BoxShape.circle,
                 ),
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: isSelected ? Colors.white : Colors.grey[600],
-                  ),
-                ),
+                child: Text(label, style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? Colors.white : Colors.grey[600])),
               ),
               const SizedBox(width: 16),
-              // Answer Text
               Expanded(
-                child: Text(
-                  opt.text,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                    color: textColor,
-                  ),
-                ),
+                child: Text(opt.text, style: TextStyle(fontSize: 16, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
               ),
             ],
           ),

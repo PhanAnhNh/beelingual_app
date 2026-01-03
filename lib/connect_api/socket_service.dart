@@ -106,17 +106,20 @@ class SocketService {
   }
 
   void onOpponentProgress(Function(dynamic data) callback) {
+    socket.off('opponent_progress'); // <--- Thêm dòng này
     socket.on('opponent_progress', (data) => callback(data));
+  }
+  void onRoundResult(Function(dynamic data) callback) {
+    socket.off('round_result');
+    socket.on('round_result', (data) => callback(data));
   }
 
   void onOpponentDisconnected(Function(dynamic data) callback) {
+    socket.off('opponent_disconnected'); // <--- Thêm dòng này
     socket.on('opponent_disconnected', (data) => callback(data));
   }
 
   void requestBotMatch() {
-    // Gửi sự kiện lên server.
-    // Server cần bắt sự kiện 'request_bot' và gọi hàm joinWithBot(matchId)
-    // Lưu ý: Client cần gửi kèm matchId hoặc userId để server biết ai đang đợi.
     socket.emit('join_with_bot', {});
   }
 
@@ -128,10 +131,11 @@ class SocketService {
   // Xóa các sự kiện lắng nghe khi rời màn hình game
   // Chỉ tắt tai nghe, không tắt kết nối
   void offGameEvents() {
-    print('🔇 Removing Game Listeners');
     socket.off('match_found');
     socket.off('next_question');
+    socket.off('round_result'); // nhớ off cái này
     socket.off('opponent_progress');
     socket.off('opponent_disconnected');
+    socket.off('game_finished');
   }
 }

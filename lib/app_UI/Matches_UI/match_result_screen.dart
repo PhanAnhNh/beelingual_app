@@ -1,7 +1,9 @@
 // lib/app_UI/pvp/pvp_result_screen.dart
 import 'package:beelingual_app/app_UI/Matches_UI/find_match_screen.dart';
 import 'package:beelingual_app/app_UI/home_UI/bottom_navigation.dart';
+import 'package:beelingual_app/component/profileProvider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class PvpResultScreen extends StatelessWidget {
   final int myScore;
@@ -20,6 +22,13 @@ class PvpResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<UserProfileProvider>(
+        context,
+        listen: false,
+      ).syncProfileInBackground(context);
+    });
     // ===== XÁC ĐỊNH KẾT QUẢ =====
     late String title;
     late String subTitle;

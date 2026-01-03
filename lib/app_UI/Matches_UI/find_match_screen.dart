@@ -1,9 +1,11 @@
 // lib/app_UI/pvp/find_match_screen.dart
 import 'dart:async';
 import 'dart:ui'; // Cần import để dùng BackdropFilter
+import 'package:beelingual_app/component/profileProvider.dart';
 import 'package:beelingual_app/connect_api/api_connect.dart';
 import 'package:beelingual_app/connect_api/socket_service.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'pvp_game_screen.dart';
 
 class FindMatchScreen extends StatefulWidget {
@@ -118,8 +120,15 @@ class _FindMatchScreenState extends State<FindMatchScreen> with SingleTickerProv
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () {
+            Provider.of<UserProfileProvider
+            >(
+              context,
+              listen: false,
+            ).syncProfileInBackground(context);
+
             Navigator.of(context).popUntil((route) => route.isFirst);
           },
+
         ),
 
         title: const Text(
