@@ -1,6 +1,5 @@
 import 'dart:convert';
-import 'dart:io'; // Để dùng HttpException
-import 'package:beelingual/connect_api/api_connect.dart';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../model/user.dart';
 import 'url.dart';

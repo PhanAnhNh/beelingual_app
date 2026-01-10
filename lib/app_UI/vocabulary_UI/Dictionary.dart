@@ -1,5 +1,4 @@
-import 'dart:async';
-import 'package:beelingual/component/vocabularyProvider.dart';
+import 'package:beelingual_app/component/vocabularyProvider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:audioplayers/audioplayers.dart';

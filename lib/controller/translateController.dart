@@ -37,14 +37,29 @@ class TranslateController extends ChangeNotifier {
   Timer? _debounceTimer;
   String _lastRequestedText = "";
 
-  final List<String> languages = [
+  List<String> languages = [
     'English',
     'Vietnamese',
+    'Chinese (Simplified)',
+    'Chinese (Traditional)',
     'Japanese',
     'Korean',
-    'Chinese',
     'French',
+    'German',
+    'Spanish',
+    'Italian',
+    'Portuguese',
+    'Russian',
+    'Thai',
+    'Indonesian',
+    'Hindi',
+    'Arabic',
+    'Turkish',
+    'Dutch',
+    'Polish',
+    'Ukrainian'
   ];
+
 
   final FlutterTts flutterTtsInput = FlutterTts();
   final FlutterTts flutterTtsOutput = FlutterTts();
@@ -63,13 +78,28 @@ class TranslateController extends ChangeNotifier {
     switch (lang) {
       case 'English': return 'en';
       case 'Vietnamese': return 'vi';
+      case 'Chinese (Simplified)': return 'zh-CN';
+      case 'Chinese (Traditional)': return 'zh-TW';
       case 'Japanese': return 'ja';
       case 'Korean': return 'ko';
-      case 'Chinese': return 'zh-CN';
       case 'French': return 'fr';
+      case 'German': return 'de';
+      case 'Spanish': return 'es';
+      case 'Portuguese': return 'pt';
+      case 'Russian': return 'ru';
+      case 'Italian': return 'it';
+      case 'Thai': return 'th';
+      case 'Indonesian': return 'id';
+      case 'Hindi': return 'hi';
+      case 'Arabic': return 'ar';
+      case 'Turkish': return 'tr';
+      case 'Dutch': return 'nl';
+      case 'Polish': return 'pl';
+      case 'Ukrainian': return 'uk';
     }
     return 'en';
   }
+
 
   void swapLanguages() {
     final oldFrom = fromLang;

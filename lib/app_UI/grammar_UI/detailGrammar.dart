@@ -1,7 +1,7 @@
-import 'package:beelingual/app_UI/grammar_UI/grammarExe.dart';
-import 'package:beelingual/connect_api/api_Streak.dart';
-import 'package:beelingual/controller/grammar.dart';
-import 'package:beelingual/model/model_grammar.dart';
+import 'package:beelingual_app/app_UI/grammar_UI/exercisesGrmList.dart';
+import 'package:beelingual_app/connect_api/api_Streak.dart';
+import 'package:beelingual_app/controller/grammarController.dart';
+import 'package:beelingual_app/model/model_grammar.dart';
 import 'package:flutter/material.dart';
 
 class PageGrammar extends StatefulWidget {
@@ -41,9 +41,7 @@ class _PageGrammarState extends State<PageGrammar> {
     }).catchError((error) {
       print("Lỗi khi tải Grammar để tính streak: $error");
     });
-    // ------------------------------------
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -72,17 +70,17 @@ class _PageGrammarState extends State<PageGrammar> {
             return _emptyState();
           }
 
-          final tenseList = snapshot.data!;
-          tenseList.sort((a, b) => (a.createdAt ?? DateTime.now())
+          final gramChoice = snapshot.data!;
+          gramChoice.sort((a, b) => (a.createdAt ?? DateTime.now())
               .compareTo(b.createdAt ?? DateTime.now()));
 
           return Padding(
             padding: const EdgeInsets.only(bottom: 30),
             child: ListView.builder(
               padding: const EdgeInsets.all(20),
-              itemCount: tenseList.length,
+              itemCount: gramChoice.length,
               itemBuilder: (context, index) {
-                final grammar = tenseList[index];
+                final grammar = gramChoice[index];
                 final gradient =
                 cardGradients[index % cardGradients.length];
 
@@ -185,6 +183,7 @@ class _PageGrammarState extends State<PageGrammar> {
     );
   }
 }
+
 class PageGrammarDetail extends StatelessWidget {
   final Grammar grammar;
   const PageGrammarDetail({super.key, required this.grammar});

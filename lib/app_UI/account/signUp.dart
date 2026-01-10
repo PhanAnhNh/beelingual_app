@@ -1,7 +1,7 @@
-import 'package:beelingual/app_UI/account/logIn.dart';
-import 'package:beelingual/app_UI/account/termPage.dart';
-import 'package:beelingual/component/messDialog.dart';
-import 'package:beelingual/connect_api/api_connect.dart';
+import 'package:beelingual_app/app_UI/account/logIn.dart';
+import 'package:beelingual_app/app_UI/account/termPage.dart';
+import 'package:beelingual_app/component/messDialog.dart';
+import 'package:beelingual_app/connect_api/api_connect.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
@@ -24,18 +24,18 @@ class _PageSignUpState extends State<PageSignUp> with SingleTickerProviderStateM
   final TextEditingController passController = TextEditingController();
   final TextEditingController conPassController = TextEditingController();
   String role = 'student';
+  String level = 'A1';
   final session = SessionManager();
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
-  // ✨ Original Yellow/Amber color scheme - Enhanced
-  static const Color primaryAmber = Color(0xFFFFC107);      // Main amber
-  static const Color darkAmber = Color(0xFFFF8F00);         // Darker amber for gradient
-  static const Color lightYellow = Color(0xFFFFF9C4);       // Background yellow
-  static const Color creamWhite = Color(0xFFFFFDE7);        // Lighter cream
-  static const Color accentBlue = Color(0xFF1E88E5);        // Link blue
-  static const Color textDark = Color(0xFF3E2723);          // Dark brown text
+  static const Color primaryAmber = Color(0xFFFFC107);
+  static const Color darkAmber = Color(0xFFFF8F00);
+  static const Color lightYellow = Color(0xFFFFF9C4);
+  static const Color creamWhite = Color(0xFFFFFDE7);
+  static const Color accentBlue = Color(0xFF1E88E5);
+  static const Color textDark = Color(0xFF3E2723);
 
   @override
   void initState() {
@@ -137,7 +137,6 @@ class _PageSignUpState extends State<PageSignUp> with SingleTickerProviderStateM
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // 🐝 Logo với icon bee hoặc user
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -181,7 +180,6 @@ class _PageSignUpState extends State<PageSignUp> with SingleTickerProviderStateM
                       ),
                       SizedBox(height: isSmallScreen ? 16 : 24),
 
-                      // Form fields
                       TextField(
                         controller: fullnameController,
                         style: const TextStyle(fontSize: 15, color: textDark),
@@ -288,7 +286,6 @@ class _PageSignUpState extends State<PageSignUp> with SingleTickerProviderStateM
                       ),
                       const SizedBox(height: 14),
 
-                      // Terms checkbox
                       InkWell(
                         onTap: () => setState(() => agreeTerms = !agreeTerms),
                         borderRadius: BorderRadius.circular(8),
@@ -475,6 +472,7 @@ class _PageSignUpState extends State<PageSignUp> with SingleTickerProviderStateM
         fullname: name,
         password: pass,
         role: role,
+        level: level,
       );
 
       session.signUpSupabase(email: email, password: pass);

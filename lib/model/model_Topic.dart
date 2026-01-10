@@ -4,12 +4,10 @@ class Topic {
   final String imageUrl;
   final int points;
   final String status;
-
-
   final int order;
-  final int progress;      // % tiến độ (0-100)
-  final int totalWords;    // Tổng số từ
-  final int learnedWords;  // Số từ đã thuộc
+  final int progress;
+  final int totalWords;
+  final int learnedWords;
 
   Topic({
     required this.id,
@@ -40,4 +38,5 @@ class Topic {
       learnedWords: json['learnedWords'] ?? 0,
     );
   }
+
 }

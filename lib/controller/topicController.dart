@@ -1,9 +1,8 @@
 import 'dart:convert';
-import 'package:beelingual/model/model_topicExe.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../connect_api/url.dart';
+import '../model/model_topicExe.dart';
 
 Future<List<Topic>> fetchAllTopic() async {
   final prefs = await SharedPreferences.getInstance();
@@ -12,8 +11,6 @@ Future<List<Topic>> fetchAllTopic() async {
   if (token == null) {
     throw Exception('Token không tồn tại. Vui lòng đăng nhập.');
   }
-
-  List<Topic> allTopic = [];
 
   final url = Uri.parse('$urlAPI/api/topics');
   final response = await http.get(
@@ -37,7 +34,7 @@ Future<List<Topic>> fetchAllTopic() async {
   else if (decoded is Map<String, dynamic>) {
     final List<dynamic>? dataList = decoded['data'];
     if (dataList == null) {
-      return []; // Hoặc throw lỗi nếu bắt buộc có data
+      return [];
     }
     return dataList.map((item) => Topic.fromJson(item)).toList();
   }

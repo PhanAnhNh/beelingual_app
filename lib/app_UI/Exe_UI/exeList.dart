@@ -1,7 +1,7 @@
-import 'package:beelingual/component/messDialog.dart';
-import 'package:beelingual/connect_api/api_Streak.dart';
-import 'package:beelingual/controller/exerciseController.dart';
-import 'package:beelingual/model/model_exercise.dart';
+import 'package:beelingual_app/component/messDialog.dart';
+import 'package:beelingual_app/connect_api/api_Streak.dart';
+import 'package:beelingual_app/controller/exerciseController.dart';
+import 'package:beelingual_app/model/model_exercise.dart';
 import 'package:flutter/material.dart';
 
 class PageExercisesList extends StatefulWidget {
@@ -16,9 +16,7 @@ class PageExercisesList extends StatefulWidget {
 
 class _PageExercisesListState extends State<PageExercisesList> with SingleTickerProviderStateMixin {
   final ExerciseController controller = ExerciseController();
-
   late Future<void> _futureLoad;
-
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -36,10 +34,8 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
     };
     _futureLoad = controller.fetchExercisesByTopicId(widget.topicId);
     _futureLoad.then((_) {
-      // Kiểm tra: Nếu màn hình còn mở VÀ danh sách bài tập không rỗng
       if (mounted && controller.exercises.isNotEmpty) {
         StreakService().updateStreak(context).then((_) {
-          // print("Đã cập nhật streak bài tập");
         });
       }
     });
@@ -67,7 +63,6 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
   void dispose() {
     _animationController.dispose();
     answerController.dispose();
-    // Cleanup TTS session when user exits
     controller.dispose();
     super.dispose();
   }
@@ -96,10 +91,10 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
         leading: IconButton(
           icon: const Icon(
               Icons.arrow_back_ios_new,
-              color: Colors.black87 // Màu đen cho giống Title
+              color: Colors.black87
           ),
           onPressed: () {
-            Navigator.pop(context); // Lệnh quay về trang trước
+            Navigator.pop(context);
           },
         ),
         automaticallyImplyLeading: false,
@@ -234,7 +229,7 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
                                           shape: BoxShape.circle,
                                         ),
                                         child: Icon(
-                                          controller.isPlayingGeminiAudio
+                                          controller.isPlaying
                                               ? Icons.stop
                                               : Icons.volume_up_rounded,
                                           size: 32,
@@ -338,10 +333,8 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
                               height: 55,
                               child: ElevatedButton(
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                  const Color(0xFF4CAF50),
-                                  shape:
-                                  RoundedRectangleBorder(
+                                  backgroundColor: const Color(0xFF4CAF50),
+                                  shape: RoundedRectangleBorder(
                                     borderRadius:
                                     BorderRadius.circular(16),
                                   ),
@@ -349,45 +342,30 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
                                 onPressed: () async {
                                   String answer = "";
 
-                                  if (item.type ==
-                                      "multiple_choice") {
+                                  if (item.type == "multiple_choice") {
                                     if (selectedOption == null) {
-                                      showErrorDialog(context,
-                                          "Thông báo","Vui lòng chọn đáp án!");
+                                      showErrorDialog(context, "Thông báo","Vui lòng chọn đáp án!");
                                       return;
                                     }
                                     answer = selectedOption!;
                                   }
 
-                                  if (item.type ==
-                                      "fill_in_blank") {
-                                    if (answerController.text
-                                        .trim()
-                                        .isEmpty) {
-                                      showErrorDialog(context,
-                                          "Thông báo","Bạn chưa nhập đáp án!");
+                                  if (item.type == "fill_in_blank") {
+                                    if (answerController.text.trim().isEmpty) {
+                                      showErrorDialog(context, "Thông báo","Bạn chưa nhập đáp án!");
                                       return;
                                     }
-                                    answer = answerController.text
-                                        .trim();
+                                    answer = answerController.text.trim();
                                   }
 
-                                  if (item.type ==
-                                      "cloze_test") {
-                                    for (final c
-                                    in clozeControllers) {
-                                      if (c.text
-                                          .trim()
-                                          .isEmpty) {
-                                        showErrorDialog(context,
-                                            "Thông báo","Bạn chưa nhập đủ đáp án!");
+                                  if (item.type == "cloze_test") {
+                                    for (final c in clozeControllers) {
+                                      if (c.text.trim().isEmpty) {
+                                        showErrorDialog(context, "Thông báo","Bạn chưa nhập đủ đáp án!");
                                         return;
                                       }
                                     }
-                                    answer = clozeControllers
-                                        .map((c) =>
-                                        c.text.trim())
-                                        .join("/");
+                                    answer = clozeControllers.map((c) => c.text.trim()).join("/");
                                   }
 
                                   await controller.answerQuestion(
@@ -414,37 +392,37 @@ class _PageExercisesListState extends State<PageExercisesList> with SingleTicker
                 ),
               ),
 
-              // ===== NAV =====
-              Container(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  mainAxisAlignment:
-                  MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Opacity(
-                      opacity: 0.4,
-                      child: Icon(Icons.arrow_back_ios_new),
-                    ),
-                    IconButton(
-                      icon: const Icon(
-                          Icons.arrow_forward_ios),
-                      onPressed: controller.isAnswered()
-                          ? () {
-                        animateNext(() {
-                          setState(() {
-                            selectedOption = null;
-                            answerController.clear();
-                            for (final c in clozeControllers) {
-                              c.clear();
-                            }
-                          });
-                        });
-                      }
-                          : null,
-                    ),
-                  ],
-                ),
-              ),
+              // // ===== NAV =====
+              // Container(
+              //   padding: const EdgeInsets.all(20),
+              //   child: Row(
+              //     mainAxisAlignment:
+              //     MainAxisAlignment.spaceBetween,
+              //     children: [
+              //       const Opacity(
+              //         opacity: 0.4,
+              //         child: Icon(Icons.arrow_back_ios_new),
+              //       ),
+              //       IconButton(
+              //         icon: const Icon(
+              //             Icons.arrow_forward_ios),
+              //         onPressed: controller.isAnswered()
+              //             ? () {
+              //           animateNext(() {
+              //             setState(() {
+              //               selectedOption = null;
+              //               answerController.clear();
+              //               for (final c in clozeControllers) {
+              //                 c.clear();
+              //               }
+              //             });
+              //           });
+              //         }
+              //             : null,
+              //       ),
+              //     ],
+              //   ),
+              // ),
             ],
           );
         },

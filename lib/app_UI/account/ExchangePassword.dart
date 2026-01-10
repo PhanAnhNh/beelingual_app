@@ -1,7 +1,7 @@
-import 'package:beelingual/connect_api/api_connect.dart';
+import 'package:beelingual_app/connect_api/api_connect.dart';
 import 'package:flutter/material.dart';
-// Import hàm changePasswordAPI vừa viết ở trên
-// import 'path/to/your/api_service.dart';
+
+import '../../component/messDialog.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -10,195 +10,98 @@ class ChangePasswordScreen extends StatefulWidget {
   State<ChangePasswordScreen> createState() => _ChangePasswordScreenState();
 }
 
-class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
-  // 1. Khởi tạo Controllers để lấy dữ liệu nhập vào
+class _ChangePasswordScreenState extends State<ChangePasswordScreen> with SingleTickerProviderStateMixin {
   final TextEditingController _currentPassController = TextEditingController();
   final TextEditingController _newPassController = TextEditingController();
   final TextEditingController _confirmPassController = TextEditingController();
+  final session = SessionManager();
 
-  // Biến quản lý trạng thái
   bool _obscureCurrentPass = true;
   bool _obscureNewPass = true;
   bool _obscureConfirmPass = true;
+  bool _isLoading = false;
 
-  bool _isLoading = false; // Trạng thái đang tải
-  String? _errorMessage;   // Chuỗi chứa lỗi để hiển thị màu đỏ
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    );
+
+    _animationController.forward();
+  }
 
   @override
   void dispose() {
+    _animationController.dispose();
     _currentPassController.dispose();
     _newPassController.dispose();
     _confirmPassController.dispose();
     super.dispose();
   }
 
-  // --- Hàm xử lý chính ---
   Future<void> _handleSubmit() async {
-    // Reset lỗi cũ
-    setState(() {
-      _errorMessage = null;
-    });
-
     final currentPass = _currentPassController.text.trim();
     final newPass = _newPassController.text.trim();
     final confirmPass = _confirmPassController.text.trim();
 
-    // Validate phía Client trước
     if (currentPass.isEmpty || newPass.isEmpty || confirmPass.isEmpty) {
-      setState(() => _errorMessage = "Vui lòng nhập đầy đủ thông tin");
+      showErrorDialog(context, "Chú ý", "Vui lòng nhập đầy đủ thông tin");
       return;
     }
-
-    if (newPass.length < 6 || newPass.length > 20) {
-      setState(() => _errorMessage = "Mật khẩu mới phải từ 6 - 20 ký tự");
+    if (!session.isValidPassword(newPass)) {
+      showErrorDialog(context, "Chú ý", "Mật khẩu phải tối thiểu 6 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt");
       return;
     }
-
     if (newPass != confirmPass) {
-      setState(() => _errorMessage = "Mật khẩu xác nhận không khớp");
+      showErrorDialog(context, "Lỗi", "Mật khẩu không khớp!");
       return;
     }
-
-    // Bắt đầu gọi API
     setState(() => _isLoading = true);
-
-    // Gọi hàm API đã viết
     final result = await changePasswordAPI(currentPass, newPass, context);
-
     if (!mounted) return;
-
     setState(() => _isLoading = false);
-
     if (result['success']) {
-      // Thành công -> Hiện thông báo và quay lại hoặc logout
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("✅ Đổi mật khẩu thành công!"), backgroundColor: Colors.green),
-      );
-      Navigator.pop(context); // Quay về màn hình trước
+      await showSuccessDialog(context, "Thành công", "Đổi mật khẩu thành công");
+      Navigator.pop(context);
     } else {
-      // Thất bại -> Hiện lỗi lên màn hình (dòng chữ đỏ)
-      setState(() {
-        _errorMessage = result['message'];
-      });
+      showErrorDialog(context, "Lỗi", "Đổi mật khẩu thất bại");
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryYellow = Color(0xFFFFD54F);
-    const Color bgCream = Color(0xFFFFFDE7);
-    const Color borderColor = Color(0xFFFFE082);
+    const Color primaryOrange = Color(0xFFFF9800);
 
     return Scaffold(
-      backgroundColor: bgCream,
-      appBar: AppBar(
-        backgroundColor: primaryYellow,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          "Đổi mật khẩu",
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      backgroundColor: const Color(0xFFF5F5F5),
+      body: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Container(
-              margin: const EdgeInsets.only(bottom: 30),
-              height: 120,
-              child: const Icon(Icons.lock_person_rounded, size: 80, color: Colors.orangeAccent),
-            ),
-
-            // 2. Ô mật khẩu hiện tại (Gắn controller)
-            _buildPasswordField(
-              controller: _currentPassController, // <--- THÊM
-              hintText: "Nhập mật khẩu hiện tại",
-              obscureText: _obscureCurrentPass,
-              borderColor: borderColor,
-              onToggleVisibility: () => setState(() => _obscureCurrentPass = !_obscureCurrentPass),
-            ),
-            const SizedBox(height: 15),
-
-            // 3. Ô mật khẩu mới (Gắn controller)
-            _buildPasswordField(
-              controller: _newPassController, // <--- THÊM
-              hintText: "Nhập mật khẩu mới",
-              obscureText: _obscureNewPass,
-              borderColor: borderColor,
-              onToggleVisibility: () => setState(() => _obscureNewPass = !_obscureNewPass),
-            ),
-
-            const Padding(
-              padding: EdgeInsets.only(top: 8.0, left: 5.0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text("Mật khẩu từ 6 - 20 ký tự", style: TextStyle(color: Colors.grey, fontSize: 13)),
-              ),
-            ),
-            const SizedBox(height: 15),
-
-            // 4. Ô xác nhận mật khẩu (Gắn controller)
-            _buildPasswordField(
-              controller: _confirmPassController, // <--- THÊM
-              hintText: "Nhập lại mật khẩu mới",
-              obscureText: _obscureConfirmPass,
-              borderColor: borderColor,
-              onToggleVisibility: () => setState(() => _obscureConfirmPass = !_obscureConfirmPass),
-            ),
-
-            // --- HIỂN THỊ LỖI ĐỘNG ---
-            if (_errorMessage != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8.0, left: 5.0),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    _errorMessage!,
-                    style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w500),
+            _buildAppBar(),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: Column(
+                    children: [
+                      _buildHeader(primaryOrange),
+                      const SizedBox(height: 32),
+                      _buildPasswordFields(primaryOrange),
+                      const SizedBox(height: 40),
+                      _buildButtons(primaryOrange),
+                    ],
                   ),
                 ),
-              ),
-
-            const SizedBox(height: 40),
-
-            // 5. Nút Lưu thay đổi (Xử lý Loading và OnPressed)
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _handleSubmit, // Disable khi đang load
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryYellow,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 2,
-                ),
-                child: _isLoading
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
-                    : const Text("Lưu thay đổi", style: TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w600)),
-              ),
-            ),
-
-            const SizedBox(height: 15),
-
-            // 6. Nút Huỷ
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  side: const BorderSide(color: Colors.black54, width: 0.5),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 0,
-                ),
-                child: const Text("Huỷ", style: TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w500)),
               ),
             ),
           ],
@@ -207,38 +110,265 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     );
   }
 
-  // Cập nhật widget con để nhận Controller
-  Widget _buildPasswordField({
-    required TextEditingController controller, // <--- THÊM tham số này
-    required String hintText,
-    required bool obscureText,
-    required Color borderColor,
-    VoidCallback? onToggleVisibility,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(color: Colors.orange.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2)),
+  Widget _buildAppBar() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        children: [
+          Material(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            elevation: 2,
+            shadowColor: Colors.black12,
+            child: InkWell(
+              onTap: () => Navigator.pop(context),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                child: const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: Colors.black87,
+                  size: 20,
+                ),
+              ),
+            ),
+          ),
+          const Expanded(
+            child: Text(
+              "Đổi mật khẩu",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.black87,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
+            ),
+          ),
+          const SizedBox(width: 48),
         ],
       ),
-      child: TextField(
-        controller: controller, // <--- Gắn controller vào đây
-        obscureText: obscureText,
-        decoration: InputDecoration(
-          hintText: hintText,
-          hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: borderColor)),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: borderColor)),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.orange, width: 1.5)),
-          suffixIcon: IconButton(
-            icon: Icon(obscureText ? Icons.visibility_off_outlined : Icons.visibility_outlined, color: Colors.brown),
-            onPressed: onToggleVisibility,
+    );
+  }
+
+  Widget _buildHeader(Color primaryColor) {
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: const Icon(
+        Icons.lock_reset_rounded,
+        size: 48,
+        color: Colors.amber,
+      ),
+    );
+  }
+
+  Widget _buildPasswordFields(Color primaryColor) {
+    return Column(
+      children: [
+        _buildPasswordField(
+          controller: _currentPassController,
+          label: "Mật khẩu hiện tại",
+          hintText: "Nhập mật khẩu hiện tại của bạn",
+          obscureText: _obscureCurrentPass,
+          icon: Icons.lock_outline_rounded,
+          primaryColor: primaryColor,
+          onToggleVisibility: () => setState(() => _obscureCurrentPass = !_obscureCurrentPass),
+        ),
+        const SizedBox(height: 20),
+        _buildPasswordField(
+          controller: _newPassController,
+          label: "Mật khẩu mới",
+          hintText: "Nhập mật khẩu mới",
+          obscureText: _obscureNewPass,
+          icon: Icons.lock_open_rounded,
+          primaryColor: primaryColor,
+          onToggleVisibility: () => setState(() => _obscureNewPass = !_obscureNewPass),
+        ),
+        const SizedBox(height: 20),
+        _buildPasswordField(
+          controller: _confirmPassController,
+          label: "Xác nhận mật khẩu",
+          hintText: "Nhập lại mật khẩu mới",
+          obscureText: _obscureConfirmPass,
+          icon: Icons.check_circle_outline_rounded,
+          primaryColor: primaryColor,
+          onToggleVisibility: () => setState(() => _obscureConfirmPass = !_obscureConfirmPass),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPasswordField({
+    required TextEditingController controller,
+    required String label,
+    required String hintText,
+    required bool obscureText,
+    required IconData icon,
+    required Color primaryColor,
+    VoidCallback? onToggleVisibility,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4.0, bottom: 8.0),
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
           ),
         ),
-      ),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: TextField(
+            controller: controller,
+            obscureText: obscureText,
+            style: const TextStyle(fontSize: 15, color: Colors.black87),
+            decoration: InputDecoration(
+              hintText: hintText,
+              hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+              prefixIcon: Icon(icon, color: primaryColor, size: 22),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  obscureText ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                  color: Colors.grey[600],
+                  size: 22,
+                ),
+                onPressed: onToggleVisibility,
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: primaryColor, width: 2),
+              ),
+              filled: true,
+              fillColor: Colors.white,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildButtons(Color primaryColor) {
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          height: 54,
+          decoration: BoxDecoration(
+            color: primaryColor,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: primaryColor.withOpacity(0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ElevatedButton(
+            onPressed: _isLoading ? null : _handleSubmit,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryColor,
+              foregroundColor: Colors.white,
+              shadowColor: Colors.transparent,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              elevation: 0,
+            ),
+            child: _isLoading
+                ? const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: Colors.white,
+              ),
+            )
+                : const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.check_circle_rounded, size: 22),
+                SizedBox(width: 8),
+                Text(
+                  "Lưu thay đổi",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        Container(
+          width: double.infinity,
+          height: 54,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.grey[300]!, width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.02),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black87,
+              shadowColor: Colors.transparent,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              elevation: 0,
+            ),
+            child: const Text(
+              "Huỷ",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

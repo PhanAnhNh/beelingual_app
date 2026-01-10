@@ -1,24 +1,23 @@
 import 'dart:convert';
-import 'package:beelingual/app_UI/Exe_UI/summaryExe.dart';
-import 'package:beelingual/model/model_exercise.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audioplayers/audioplayers.dart';
+import '../app_UI/Exe_UI/SummaryExeList.dart';
 import '../component/messDialog.dart';
 import '../connect_api/url.dart';
 import '../connect_api/tts_service.dart';
+import '../model/model_exercise.dart';
 
 class ExerciseController {
   List<Exercises> exercises = [];
   Map<String,String> submittedAnswers = {};
   Map<String, String> userAnswers = {};
   int currentIndex = 0;
-  
-  // TTS Service
+
   final TTSService _ttsService = TTSService();
   final AudioPlayer _audioPlayer = AudioPlayer();
-  bool isPlayingGeminiAudio = false;
+  bool isPlaying = false;
 
   Future<void> fetchExercisesByTopicId(String topicId) async {
     final prefs = await SharedPreferences.getInstance();
@@ -62,13 +61,11 @@ class ExerciseController {
     final userId = prefs.getString('userId') ?? 'guest';
     await _ttsService.initSession(userId);
     
-    // Get all listening exercise IDs
     final listeningIds = exercises
         .where((ex) => ex.skill == 'listening')
         .map((ex) => ex.id)
         .toList();
-    
-    // Prefetch ALL exercises (WAIT for completion)
+
     if (listeningIds.isNotEmpty) {
       print('⏳ Waiting for ${listeningIds.length} audio files to download...');
       await _ttsService.prefetchAll(listeningIds);
@@ -111,8 +108,6 @@ class ExerciseController {
 
     currentIndex = 0;
     userAnswers.clear();
-    
-    // Initialize TTS session and prefetch - WAIT for completion
     await _initializeTTSSession();
   }
 
@@ -122,17 +117,11 @@ class ExerciseController {
     required String userAnswer,
   }) async {
     final ex = exercises[currentIndex];
-
-    if (userAnswers.containsKey(ex.id)) return; // Không trả lời lại
-
+    if (userAnswers.containsKey(ex.id)) return;
     await stopSpeaking();
-
-    // Lưu đáp án vào cả userAnswers (hiển thị trạng thái answered) và submittedAnswers (để tra cứu sau)
     userAnswers[ex.id] = userAnswer;
     submittedAnswers[ex.id] = userAnswer;
-
-    final bool isCorrect = userAnswer.trim().toLowerCase() ==
-        ex.correctAnswer.trim().toLowerCase();
+    final bool isCorrect = userAnswer.trim().toLowerCase() == ex.correctAnswer.trim().toLowerCase();
 
     if (isCorrect) {
       await showSuccessDialog(context, "Thông báo","Bạn đã trả lời đúng!");
@@ -150,7 +139,6 @@ class ExerciseController {
       return;
     }
 
-    // Cleanup session when finishing (delete all cached audio at once)
     await _ttsService.cleanupSession();
     
     Navigator.pushReplacement(
@@ -172,8 +160,6 @@ class ExerciseController {
   VoidCallback? onAudioStateChange;
 
 
-
-  /// Play listening exercise audio using Gemini TTS
   Future<void> speakLisExercises({
     required String exerciseId,
     required String audioUrl,
@@ -181,22 +167,19 @@ class ExerciseController {
   }) async {
     if (audioUrl.isEmpty) return;
 
-    // Stop if already playing
-    if (isPlayingGeminiAudio) {
+    if (isPlaying) {
       await _audioPlayer.stop();
-      isPlayingGeminiAudio = false;
+      isPlaying = false;
       onAudioStateChange?.call();
       return;
     }
 
     try {
-      isPlayingGeminiAudio = true;
+      isPlaying = true;
       onAudioStateChange?.call();
 
-      // Get audio source (Local cache or URL)
       final source = await _ttsService.getAudioSource(exerciseId);
-      
-      // Play audio from source
+
       if (source is DeviceFileSource) {
         await _audioPlayer.play(source);
       } else if (source is UrlSource) {
@@ -205,64 +188,54 @@ class ExerciseController {
 
       // Listen for completion
       _audioPlayer.onPlayerComplete.listen((_) {
-        isPlayingGeminiAudio = false;
+        isPlaying = false;
         onAudioStateChange?.call();
       });
       
     } catch (e) {
       print('❌ Error playing Gemini audio: $e');
-      isPlayingGeminiAudio = false;
+      isPlaying = false;
       onAudioStateChange?.call();
     }
   }
-  
-  /// Play audio for regular exercises (vocab, grammar)
-  /// Uses same Gemini TTS but for question text
+
   Future<void> speakExercises(String exerciseId, String audioText) async {
     if (audioText.isEmpty) return;
 
-    // Stop if already playing
-    if (isPlayingGeminiAudio) {
+    if (isPlaying) {
       await _audioPlayer.stop();
-      isPlayingGeminiAudio = false;
+      isPlaying = false;
       onAudioStateChange?.call();
       return;
     }
 
     try {
-      isPlayingGeminiAudio = true;
+      isPlaying = true;
       onAudioStateChange?.call();
 
-      // Get audio source (Local cache or URL)
       final source = await _ttsService.getAudioSource(exerciseId);
-      
-      // Play audio from source
+
       if (source is DeviceFileSource) {
         await _audioPlayer.play(source);
       } else if (source is UrlSource) {
         await _audioPlayer.play(source);
       }
 
-      // Listen for completion
       _audioPlayer.onPlayerComplete.listen((_) {
-        isPlayingGeminiAudio = false;
+        isPlaying = false;
         onAudioStateChange?.call();
       });
       
     } catch (e) {
       print('❌ Error playing audio: $e');
-      isPlayingGeminiAudio = false;
+      isPlaying = false;
       onAudioStateChange?.call();
     }
   }
-  
-
-
-
 
   Future<void> stopSpeaking() async {
     await _audioPlayer.stop();
-    isPlayingGeminiAudio = false;
+    isPlaying = false;
   }
   
   /// Dispose resources

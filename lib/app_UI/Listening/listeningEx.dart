@@ -1,77 +1,63 @@
-import 'package:beelingual/component/messDialog.dart';
-import 'package:beelingual/connect_api/api_Streak.dart';
-import 'package:beelingual/controller/exerciseController.dart';
-import 'package:beelingual/model/model_exercise.dart';
+import 'package:beelingual_app/component/messDialog.dart';
+import 'package:beelingual_app/connect_api/api_Streak.dart';
+import 'package:beelingual_app/controller/exerciseController.dart';
+import 'package:beelingual_app/model/model_exercise.dart';
 import 'package:flutter/material.dart';
 
-class PageListeningExercise extends StatefulWidget {
+class PageListenExe extends StatefulWidget {
   final String level;
   final String skill;
 
-  const PageListeningExercise({
+  const PageListenExe({
     super.key,
     required this.level,
     required this.skill,
   });
 
   @override
-  State<PageListeningExercise> createState() => _PageListeningExerciseState();
+  State<PageListenExe> createState() => _PageListenExeState();
 }
 
-class _PageListeningExerciseState extends State<PageListeningExercise>
-    with SingleTickerProviderStateMixin {
+class _PageListenExeState extends State<PageListenExe> with SingleTickerProviderStateMixin {
   final ExerciseController controller = ExerciseController();
-
   late Future<void> _futureLoad;
-
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
-
   String? selectedOption;
   TextEditingController answerController = TextEditingController();
-
   List<TextEditingController> clozeControllers = [];
   List<String> clozeAnswers = [];
 
   @override
   void initState() {
     super.initState();
-
     controller.onAudioStateChange = () {
       if (mounted) setState(() {});
     };
-
     _futureLoad = controller.fetchExercisesByLevelAndSkill(
       level: widget.level,
       skill: widget.skill,
     );
-
     _futureLoad.then((_) {
-      // Kiểm tra: Nếu màn hình còn mở VÀ danh sách bài tập không rỗng
       if (mounted && controller.exercises.isNotEmpty) {
         StreakService().updateStreak(context).then((_) {
-          // print("Đã cập nhật streak listening");
         });
       }
     });
-
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 350),
     );
-
     _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
-
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0.2, 0),
       end: Offset.zero,
     ).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
     );
-
     _animationController.forward();
   }
 
@@ -82,11 +68,9 @@ class _PageListeningExerciseState extends State<PageListeningExercise>
     for (final c in clozeControllers) {
       c.dispose();
     }
-    // Cleanup TTS session when user exits
     controller.dispose();
     super.dispose();
   }
-
   void animateNext(VoidCallback doChange) {
     _animationController.reverse().then((_) {
       doChange();
@@ -99,6 +83,12 @@ class _PageListeningExerciseState extends State<PageListeningExercise>
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
         title: Text(
           "${widget.skill.toUpperCase()} - ${widget.level}",
           style: const TextStyle(
@@ -108,7 +98,6 @@ class _PageListeningExerciseState extends State<PageListeningExercise>
         ),
         backgroundColor: const Color(0xFFFFF176),
         elevation: 0,
-        automaticallyImplyLeading: false,
       ),
       body: FutureBuilder(
         future: _futureLoad,
@@ -259,7 +248,7 @@ class _PageListeningExerciseState extends State<PageListeningExercise>
                                           shape: BoxShape.circle,
                                         ),
                                         child: Icon(
-                                          controller.isPlayingGeminiAudio
+                                          controller.isPlaying
                                               ? Icons.stop
                                               : Icons.volume_up_rounded,
                                           size: 32,
@@ -289,34 +278,25 @@ class _PageListeningExerciseState extends State<PageListeningExercise>
                                 return Opacity(
                                   opacity: answered ? 0.5 : 1,
                                   child: Container(
-                                    margin: const EdgeInsets.only(
-                                        bottom: 12),
+                                    margin: const EdgeInsets.only(bottom: 12),
                                     decoration: BoxDecoration(
-                                      borderRadius:
-                                      BorderRadius.circular(16),
+                                      borderRadius: BorderRadius.circular(16),
                                       border: Border.all(
-                                        color: isSelected
-                                            ? const Color(
-                                            0xFFFFD54F)
-                                            : Colors.grey[300]!,
-                                        width: 2,
+                                        color: isSelected ? const Color(0xFFFFD54F)
+                                            : Colors.grey[300]!, width: 2,
                                       ),
                                     ),
                                     child: RadioListTile(
                                       enabled: !answered,
                                       value: o.text,
                                       groupValue: selectedOption,
-                                      onChanged: answered
-                                          ? null
-                                          : (v) {
+                                      onChanged: answered ? null : (v) {
                                         setState(() {
-                                          selectedOption =
-                                              v.toString();
+                                          selectedOption = v.toString();
                                         });
                                       },
                                       title: Text(o.text),
-                                      activeColor:
-                                      const Color(0xFFFFD54F),
+                                      activeColor: const Color(0xFFFFD54F),
                                     ),
                                   ),
                                 );
@@ -341,19 +321,14 @@ class _PageListeningExerciseState extends State<PageListeningExercise>
                               children: List.generate(
                                 clozeControllers.length,
                                     (index) => Padding(
-                                  padding: const EdgeInsets.only(
-                                      bottom: 12),
+                                  padding: const EdgeInsets.only(bottom: 12),
                                   child: TextField(
-                                    enabled:
-                                    !controller.isAnswered(),
-                                    controller:
-                                    clozeControllers[index],
+                                    enabled: !controller.isAnswered(),
+                                    controller: clozeControllers[index],
                                     textAlign: TextAlign.center,
                                     decoration: InputDecoration(
-                                      hintText:
-                                      "Answer ${index + 1}",
-                                      border:
-                                      const OutlineInputBorder(),
+                                      hintText: "Answer ${index + 1}",
+                                      border: const OutlineInputBorder(),
                                     ),
                                   ),
                                 ),
@@ -369,64 +344,45 @@ class _PageListeningExerciseState extends State<PageListeningExercise>
                               height: 55,
                               child: ElevatedButton(
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                  const Color(0xFF4CAF50),
-                                  shape:
-                                  RoundedRectangleBorder(
-                                    borderRadius:
-                                    BorderRadius.circular(16),
+                                  backgroundColor: const Color(0xFF4CAF50),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
                                   ),
                                 ),
                                 onPressed: () async {
                                   String answer = "";
 
-                                  if (item.type ==
-                                      "multiple_choice") {
+                                  if (item.type == "multiple_choice") {
                                     if (selectedOption == null) {
-                                      showErrorDialog(context,
-                                          "Thông báo","Vui lòng chọn đáp án!");
+                                      showErrorDialog(context, "Thông báo","Vui lòng chọn đáp án!");
                                       return;
                                     }
                                     answer = selectedOption!;
                                   }
 
-                                  if (item.type ==
-                                      "fill_in_blank") {
-                                    if (answerController.text
-                                        .trim()
-                                        .isEmpty) {
-                                      showErrorDialog(context,
-                                          "Thông báo" ,"Bạn chưa nhập đáp án!");
+                                  if (item.type == "fill_in_blank") {
+                                    if (answerController.text.trim().isEmpty) {
+                                      showErrorDialog(context, "Thông báo" ,"Bạn chưa nhập đáp án!");
                                       return;
                                     }
-                                    answer = answerController.text
-                                        .trim();
+                                    answer = answerController.text.trim();
                                   }
 
-                                  if (item.type ==
-                                      "cloze_test") {
-                                    for (final c
-                                    in clozeControllers) {
-                                      if (c.text
-                                          .trim()
-                                          .isEmpty) {
-                                        showErrorDialog(context,
-                                            "Thông báo" ,"Bạn chưa nhập đủ đáp án!");
+                                  if (item.type == "cloze_test") {
+                                    for (final c in clozeControllers) {
+                                      if (c.text.trim().isEmpty) {
+                                        showErrorDialog(context, "Thông báo" ,"Bạn chưa nhập đủ đáp án!");
                                         return;
                                       }
                                     }
-                                    answer = clozeControllers
-                                        .map((c) =>
-                                        c.text.trim())
-                                        .join("/");
+                                    answer = clozeControllers.map((c) =>
+                                        c.text.trim()).join("/");
                                   }
 
                                   await controller.answerQuestion(
                                     context: context,
                                     userAnswer: answer,
                                   );
-
-                                  setState(() {});
                                 },
                                 child: const Text(
                                   "Check Answer",
@@ -442,39 +398,6 @@ class _PageListeningExerciseState extends State<PageListeningExercise>
                       ),
                     ),
                   ),
-                ),
-              ),
-
-              // ===== NAV =====
-              Container(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  mainAxisAlignment:
-                  MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Opacity(
-                      opacity: 0.4,
-                      child: Icon(Icons.arrow_back_ios_new),
-                    ),
-                    IconButton(
-                      icon: const Icon(
-                          Icons.arrow_forward_ios),
-                      onPressed: controller.isAnswered()
-                          ? () {
-                        animateNext(() {
-                          setState(() {
-                            selectedOption = null;
-                            answerController.clear();
-                            for (final c
-                            in clozeControllers) {
-                              c.clear();
-                            }
-                          });
-                        });
-                      }
-                          : null,
-                    ),
-                  ],
                 ),
               ),
             ],

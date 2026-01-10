@@ -1,6 +1,6 @@
-import 'package:beelingual/component/messDialog.dart';
-import 'package:beelingual/controller/exeGrm_Controller.dart';
-import 'package:beelingual/model/exercisesGrm.dart';
+import 'package:beelingual_app/component/messDialog.dart';
+import 'package:beelingual_app/controller/exeGrmController.dart';
+import 'package:beelingual_app/model/exercisesGrm.dart';
 import 'package:flutter/material.dart';
 
 class PageExercisesGrmList extends StatefulWidget {

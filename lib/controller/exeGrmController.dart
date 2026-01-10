@@ -1,8 +1,8 @@
 import 'dart:convert';
-import 'package:beelingual/app_UI/grammar_UI/summaryGrammar.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../app_UI/grammar_UI/summaryExercisesGrm.dart';
 import '../connect_api/url.dart';
 import '../model/exercisesGrm.dart';
 import '../component/messDialog.dart';

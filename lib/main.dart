@@ -1,12 +1,12 @@
-import 'package:beelingual/app_UI/account/logIn.dart';
-import 'package:beelingual/app_UI/home_UI/bottomNavigation.dart';
-import 'package:beelingual/component/profileProvider.dart';
-import 'package:beelingual/component/progressProvider.dart';
-import 'package:beelingual/component/vocabularyProvider.dart';
-import 'package:beelingual/connect_api/api_connect.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'app_UI/account/logIn.dart';
+import 'app_UI/home_UI/bottom_navigation.dart';
+import 'component/profileProvider.dart';
+import 'component/progressProvider.dart';
+import 'component/vocabularyProvider.dart';
+import 'connect_api/api_connect.dart';
 
 void main() {
   runApp(const MyApp());
@@ -32,7 +32,6 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: "Beelingual",
-
         home: FutureBuilder<bool>(
           future: SessionManager().isLoggedIn(),
           builder: (context, snapshot) {
@@ -43,7 +42,6 @@ class MyApp extends StatelessWidget {
                 ),
               );
             }
-
             if (snapshot.hasData && snapshot.data == true) {
               return const home_navigation();
             } else {

@@ -1,8 +1,8 @@
-import 'package:beelingual/model/model_Topic.dart';
+import 'package:beelingual_app/model/model_Topic.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:beelingual/component/progressProvider.dart';
-import 'package:beelingual/app_UI/vocabulary_UI/list_Vocab.dart';
+import 'package:beelingual_app/component/progressProvider.dart';
+import 'package:beelingual_app/app_UI/vocabulary_UI/list_Vocab.dart';
 
 class LevelPage extends StatefulWidget {
   final String topicId;

@@ -25,14 +25,9 @@ class _ShowMessDialogState extends State<ShowMessDialog>
   @override
   void initState() {
     super.initState();
-    _controller =
-        AnimationController(duration: const Duration(milliseconds: 400), vsync: this);
-
-    _scaleAnimation =
-        CurvedAnimation(parent: _controller, curve: Curves.easeOutBack);
-    _fadeAnimation =
-        CurvedAnimation(parent: _controller, curve: Curves.easeOut);
-
+    _controller = AnimationController(duration: const Duration(milliseconds: 400), vsync: this);
+    _scaleAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeOutBack);
+    _fadeAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
     _controller.forward();
   }
 
@@ -48,17 +43,13 @@ class _ShowMessDialogState extends State<ShowMessDialog>
 
   @override
   Widget build(BuildContext context) {
-    final iconData =
-    widget.isError ? Icons.error_outline : Icons.check_circle_outline;
-    final iconColor =
-    widget.isError ? Colors.red.shade400 : Colors.green.shade400;
-
+    final iconData = widget.isError ? Icons.error_outline : Icons.check_circle_outline;
+    final iconColor = widget.isError ? Colors.red.shade400 : Colors.green.shade400;
     final gradientColors = widget.isError
         ? [Colors.red.shade50, Colors.red.shade100]
         : [Colors.green.shade50, Colors.green.shade100];
 
-    final buttonColor =
-    widget.isError ? Colors.red.shade400 : Colors.green.shade400;
+    final buttonColor = widget.isError ? Colors.red.shade400 : Colors.green.shade400;
 
     return FadeTransition(
       opacity: _fadeAnimation,
@@ -203,7 +194,6 @@ Future<void> showRightAnswer(BuildContext context,String title, String message) 
     ),
   );
 }
-
 
 Future<void> showWrongAnswer(BuildContext context,String title, String message) {
   return showDialog(

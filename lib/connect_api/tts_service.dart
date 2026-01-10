@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,8 +6,6 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'url.dart';
 
-/// TTS Service for Gemini-powered audio generation
-/// Manages audio caching and smart prefetching
 class TTSService {
   static final TTSService _instance = TTSService._internal();
   factory TTSService() => _instance;
@@ -17,14 +14,12 @@ class TTSService {
   String? _sessionId;
   String? _userId;
 
-  /// Initialize session with user ID
   Future<void> initSession(String userId) async {
     _userId = userId;
     _sessionId = '$userId-${DateTime.now().millisecondsSinceEpoch}';
     print('🔑 TTS Session initialized: $_sessionId');
   }
 
-  /// Get session ID (create if not exists)
   Future<String> getSessionId() async {
     if (_sessionId == null) {
       final prefs = await SharedPreferences.getInstance();
@@ -34,24 +29,12 @@ class TTSService {
     return _sessionId!;
   }
 
-  /// Get audio URL for an exercise
   Future<String> getAudioUrl(String exerciseId) async {
     final sessionId = await getSessionId();
     return '$urlAPI/api/tts/audio/$exerciseId?sessionId=$sessionId';
   }
 
-  // Cache directory path (in memory for web, or file path for mobile)
-  String? _cachePath;
-
-  /// Get audio source for exercise
-  /// Checks local cache first, then downloads if needed
   Future<Source> getAudioSource(String exerciseId) async {
-    // Web support: Return URL source directly (browser handles caching)
-    if (kIsWeb) {
-      final url = await getAudioUrl(exerciseId);
-      return UrlSource(url);
-    }
-
     try {
       final file = await _getLocalFile(exerciseId);
       
@@ -60,7 +43,6 @@ class TTSService {
         return DeviceFileSource(file.path);
       }
 
-      // Download and save
       print('⬇️ Downloading audio for $exerciseId...');
       final url = await getAudioUrl(exerciseId);
       final response = await http.get(Uri.parse(url));
@@ -74,24 +56,18 @@ class TTSService {
       }
     } catch (e) {
       print('❌ Audio cache error: $e');
-      // Fallback to URL
       final url = await getAudioUrl(exerciseId);
       return UrlSource(url);
     }
   }
 
-  /// Get local file reference
   Future<File> _getLocalFile(String exerciseId) async {
     final dir = await getTemporaryDirectory();
     return File('${dir.path}/tts_$exerciseId.wav');
   }
 
-  /// Prefetch listening exercises
-  /// Strategy: Wait for first 3 files (Critical), then download rest in background
   Future<void> prefetchAll(List<String> exerciseIds) async {
     if (exerciseIds.isEmpty) return;
-    
-    // 1. Download Initial Batch (Wait for this to complete)
     final firstBatchSize = 1;
     final initialCount = (exerciseIds.length < firstBatchSize) ? exerciseIds.length : firstBatchSize;
     final initialBatch = exerciseIds.sublist(0, initialCount);
@@ -99,15 +75,12 @@ class TTSService {
     print('⏳ Downloading initial batch ($initialCount files)...');
     await Future.wait(initialBatch.map((id) => _downloadFile(id)));
     print('✅ Initial audio ready! Entering exercise...');
-    
-    // 2. Download Remaining (Background - Fire & Forget)
     if (exerciseIds.length > firstBatchSize) {
       final remaining = exerciseIds.sublist(firstBatchSize);
       _downloadBackground(remaining);
     }
   }
 
-  /// Process remaining files in background
   Future<void> _downloadBackground(List<String> ids) async {
     print('🚀 Starting background download for remaining ${ids.length} files...');
     
@@ -121,21 +94,18 @@ class TTSService {
     print('✅ All background files downloaded');
   }
 
-  /// Helper to download single file
   Future<void> _downloadFile(String exerciseId) async {
     try {
       final url = await getAudioUrl(exerciseId);
-      
-      // On Web: Just make the request to warm up browser cache
+
       if (kIsWeb) {
         await http.get(Uri.parse(url));
         print('✅ [Web] Cached: $exerciseId');
         return;
       }
 
-      // On Mobile: Save to file
       final file = await _getLocalFile(exerciseId);
-      if (await file.exists()) return; // Skip if already cached
+      if (await file.exists()) return;
 
       final response = await http.get(Uri.parse(url));
 
@@ -148,7 +118,6 @@ class TTSService {
     }
   }
 
-  /// Cleanup (Delete all cached files)
   Future<void> cleanupSession() async {
     _sessionId = null;
     print('🧹 Session Cleared (ID reset)');

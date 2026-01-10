@@ -1,4 +1,4 @@
-import 'package:beelingual/connect_api/api_Progress.dart';
+import 'package:beelingual_app/connect_api/api_Progress.dart';
 import 'package:flutter/material.dart';
 
 class UserProgressProvider extends ChangeNotifier {

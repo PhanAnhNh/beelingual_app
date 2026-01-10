@@ -1,6 +1,6 @@
-import 'package:beelingual/app_UI/grammar_UI/detailGrammar.dart';
-import 'package:beelingual/controller/grammar.dart';
-import 'package:beelingual/model/model_grammar.dart';
+import 'package:beelingual_app/app_UI/grammar_UI/detailGrammar.dart';
+import 'package:beelingual_app/controller/grammarController.dart';
+import 'package:beelingual_app/model/model_grammar.dart';
 import 'package:flutter/material.dart';
 
 class PageGrammarList extends StatefulWidget {
@@ -41,7 +41,8 @@ class _PageGrammarListState extends State<PageGrammarList> {
                   valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFBC02D)),
                 ),
               );
-            } else if (snapshot.hasError) {
+            }
+            else if (snapshot.hasError) {
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -72,14 +73,6 @@ class _PageGrammarListState extends State<PageGrammarList> {
             }
 
             final categories = snapshot.data!;
-            // Sắp xếp theo thời gian tạo (mới nhất lên đầu)
-            categories.sort((a, b) {
-              if (a.createdAt == null && b.createdAt == null) return 0;
-              if (a.createdAt == null) return 1;
-              if (b.createdAt == null) return -1;
-              return b.createdAt!.compareTo(a.createdAt!); // Đổi thứ tự để mới nhất lên đầu
-            });
-
             final List<Color> colors = [
               const Color(0xFFFF6B6B),
               const Color(0xFF4ECDC4),
@@ -142,7 +135,6 @@ class _PageGrammarListState extends State<PageGrammarList> {
                         ),
                         child: Row(
                           children: [
-                            // Icon container
                             Container(
                               width: 40,
                               height: 40,

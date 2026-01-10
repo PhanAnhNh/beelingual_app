@@ -1,6 +1,6 @@
-import 'package:beelingual/model/user.dart';
+import 'package:beelingual_app/connect_api/api_connect.dart';
+import 'package:beelingual_app/model/user.dart';
 import 'package:flutter/material.dart';
-import 'package:beelingual/connect_api/api_connect.dart';
 
 class AccountInformation extends StatefulWidget {
   const AccountInformation({super.key});
@@ -9,28 +9,49 @@ class AccountInformation extends StatefulWidget {
   State<AccountInformation> createState() => _AccountInformationState();
 }
 
-class _AccountInformationState extends State<AccountInformation> {
+class _AccountInformationState extends State<AccountInformation> with SingleTickerProviderStateMixin {
   bool _isEditing = false;
   late Future<Map<String, dynamic>?> _profileFuture;
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
 
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _levelController = TextEditingController();
 
-  final Color _bgColor = const Color(0xFFFFF8E7);
-  final Color _cardColor = const Color(0xFFFFCA28);
-  final Color _textColor = const Color(0xFF4E342E);
+  // Modern color palette
+  final Color _primaryColor = const Color(0xFFFFB800);
+  final Color _secondaryColor = const Color(0xFFFFC947);
+  final Color _accentColor = const Color(0xFFFF9500);
+  final Color _textPrimary = const Color(0xFF2C2C2C);
+  final Color _textSecondary = const Color(0xFF757575);
 
-  // Biến hiển thị (Sẽ được gán giá trị từ API)
   String _currentUsername = "";
   String _currentLevel = "";
   String _xp = "";
   String _gems = "";
+  String _role ="";
 
   @override
   void initState() {
     super.initState();
     _profileFuture = fetchUserProfile(context);
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _fullNameController.dispose();
+    _emailController.dispose();
+    _levelController.dispose();
+    super.dispose();
   }
 
   void _refreshData() {
@@ -41,6 +62,7 @@ class _AccountInformationState extends State<AccountInformation> {
 
   void _toggleEditing(User? currentUser) {
     if (_isEditing) {
+      _animationController.reverse();
       setState(() {
         _isEditing = false;
         if (currentUser != null) {
@@ -50,6 +72,7 @@ class _AccountInformationState extends State<AccountInformation> {
         }
       });
     } else {
+      _animationController.forward();
       setState(() {
         _isEditing = true;
       });
@@ -69,77 +92,149 @@ class _AccountInformationState extends State<AccountInformation> {
     );
 
     if (success) {
+      _animationController.reverse();
       setState(() {
         _isEditing = false;
         _refreshData();
       });
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Cập nhật thành công!")));
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 12),
+              Text("Cập nhật thành công!", style: TextStyle(fontWeight: FontWeight.w600)),
+            ],
+          ),
+          backgroundColor: Colors.green[600],
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Cập nhật thất bại. Vui lòng thử lại!")));
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 12),
+              Text("Cập nhật thất bại. Vui lòng thử lại!", style: TextStyle(fontWeight: FontWeight.w600)),
+            ],
+          ),
+          backgroundColor: Colors.red[600],
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
     }
   }
 
-  // --- HÀM QUAN TRỌNG: Map dữ liệu từ JSON API vào biến ---
   void _mapDataToControllers(User user, Map<String, dynamic> json) {
     _fullNameController.text = user.fullname;
     _emailController.text = user.email;
     _levelController.text = user.level;
     _currentLevel = user.level;
-
-    // LẤY DỮ LIỆU TRỰC TIẾP TỪ JSON API
-    // Bạn hãy kiểm tra lại key 'username', 'xp', 'gems' trong API của bạn xem đúng tên chưa nhé
     _currentUsername = json['username']?.toString() ?? user.fullname;
+    _role = json['role']?.toString() ?? user.role;
     _xp = "${json['xp']?.toString() ?? '0'} XP";
     _gems = "${json['gems']?.toString() ?? '0'} Gems";
   }
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
-      backgroundColor: _bgColor,
+      backgroundColor: const Color(0xFFF8F9FA),
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: _bgColor,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: _textColor),
-          onPressed: () => Navigator.pop(context),
+        leading: Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: IconButton(
+            icon: Icon(Icons.arrow_back_ios_new, color: _textPrimary, size: 20),
+            onPressed: () => Navigator.pop(context),
+          ),
         ),
         title: Text(
           "Account Information",
           style: TextStyle(
-              color: _textColor, fontWeight: FontWeight.bold, fontSize: 20),
+            color: _textPrimary,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+            letterSpacing: -0.5,
+          ),
         ),
         actions: [
-          IconButton(
-            icon: Icon(
-              _isEditing ? Icons.close : Icons.edit,
-              color: _isEditing ? Colors.red : const Color(0xFFFBC02D),
+          Container(
+            margin: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: _isEditing ? Colors.red[50] : Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-            onPressed: () async {
-              final snapshot = await _profileFuture;
-              if (snapshot != null) {
-                final user = User.fromJson(snapshot);
-                // Map lại dữ liệu mới nhất trước khi sửa
-                setState(() {
-                  _mapDataToControllers(user, snapshot);
-                });
-                _toggleEditing(user);
-              }
-            },
-          )
+            child: IconButton(
+              icon: Icon(
+                _isEditing ? Icons.close_rounded : Icons.edit_outlined,
+                color: _isEditing ? Colors.red : _accentColor,
+                size: 22,
+              ),
+              onPressed: () async {
+                final snapshot = await _profileFuture;
+                if (snapshot != null) {
+                  final user = User.fromJson(snapshot);
+                  setState(() {
+                    _mapDataToControllers(user, snapshot);
+                  });
+                  _toggleEditing(user);
+                }
+              },
+            ),
+          ),
         ],
       ),
       body: FutureBuilder<Map<String, dynamic>?>(
         future: _profileFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+              ),
+            );
           }
           if (snapshot.hasError || snapshot.data == null) {
-            return Center(child: Text("Lỗi tải thông tin", style: TextStyle(color: _textColor)));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
+                  const SizedBox(height: 16),
+                  Text(
+                    "Lỗi tải thông tin",
+                    style: TextStyle(color: _textSecondary, fontSize: 16),
+                  ),
+                ],
+              ),
+            );
           }
 
           final userData = snapshot.data!;
@@ -150,91 +245,32 @@ class _AccountInformationState extends State<AccountInformation> {
           }
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            physics: const BouncingScrollPhysics(),
             child: Column(
               children: [
-                _buildTopCard(currentUser),
-
-                const SizedBox(height: 20),
-
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      )
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      _buildInfoRow(
-                        icon: Icons.email_outlined,
-                        iconColor: Colors.orange,
-                        iconBgColor: const Color(0xFFFFF3E0),
-                        label: "Email Address",
-                        value: currentUser.email,
-                        controller: _emailController,
-                        isEditable: true,
-                      ),
-                      const Divider(height: 30, thickness: 0.5, indent: 70, endIndent: 20),
-
-                      _buildInfoRow(
-                        icon: Icons.star_outline,
-                        iconColor: Colors.blue,
-                        iconBgColor: const Color(0xFFE3F2FD),
-                        label: "Current Level",
-                        value: currentUser.level,
-                        controller: _levelController,
-                        isEditable: false,
-                      ),
-                      const Divider(height: 30, thickness: 0.5, indent: 70, endIndent: 20),
-
-                      // Hiển thị XP lấy từ API
-                      _buildInfoRow(
-                          icon: Icons.bolt,
-                          iconColor: const Color(0xFFBCAAA4),
-                          iconBgColor: const Color(0xFFFFF8E1),
-                          label: "Experience Points",
-                          value: _xp,
-                          isEditable: false,
-                          isCustomField: true
-                      ),
-                      const Divider(height: 30, thickness: 0.5, indent: 70, endIndent: 20),
-
-                      // Hiển thị Gems lấy từ API
-                      _buildInfoRow(
-                          icon: Icons.diamond_outlined,
-                          iconColor: const Color(0xFF8D6E63),
-                          iconBgColor: const Color(0xFFFFF8E1),
-                          label: "Total Gems",
-                          value: _gems,
-                          isEditable: false,
-                          isCustomField: true
-                      ),
-                    ],
+                _buildHeaderGradient(),
+                Transform.translate(
+                  offset: const Offset(0, -40),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      children: [
+                        _buildProfileCard(currentUser),
+                        const SizedBox(height: 20),
+                        _buildStatsCards(),
+                        const SizedBox(height: 20),
+                        _buildInfoCard(currentUser),
+                        const SizedBox(height: 30),
+                        if (_isEditing)
+                          FadeTransition(
+                            opacity: _fadeAnimation,
+                            child: _buildSaveButton(),
+                          ),
+                        const SizedBox(height: 30),
+                      ],
+                    ),
                   ),
                 ),
-
-                const SizedBox(height: 30),
-
-                if (_isEditing)
-                  ElevatedButton(
-                    onPressed: _updateProfile,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _cardColor,
-                      foregroundColor: _textColor,
-                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                    ),
-                    child: const Text("Save Changes", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  )
               ],
             ),
           );
@@ -243,82 +279,145 @@ class _AccountInformationState extends State<AccountInformation> {
     );
   }
 
-  Widget _buildTopCard(User user) {
+  Widget _buildHeaderGradient() {
     return Container(
-      width: double.infinity,
-      height: 220,
-      padding: const EdgeInsets.all(20),
+      height: 150,
       decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [_primaryColor, _secondaryColor, _accentColor],
+        ),
       ),
-      child: Stack(
+    );
+  }
+
+  Widget _buildProfileCard(User user) {
+    bool isStudent = _role.toLowerCase() == 'student';
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryColor.withOpacity(0.15),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
         children: [
-          Positioned(
-            top: 10,
-            left: 10,
-            child: CircleAvatar(
-              radius: 40,
-              backgroundColor: Colors.grey[300],
-              backgroundImage: const AssetImage('assets/Images/logoBee.png'),
+          Stack(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [_primaryColor, _accentColor],
+                  ),
+                ),
+                child: CircleAvatar(
+                  radius: 48,
+                  backgroundColor: Colors.white,
+                  child: CircleAvatar(
+                    radius: 44,
+                    backgroundColor: Colors.grey[200],
+                    backgroundImage: const AssetImage('assets/Images/logoBee.png'),
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.green[400],
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 3),
+                  ),
+                  child: const Icon(Icons.verified, color: Colors.white, size: 16),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isStudent
+                    ? [Colors.green[400]!, Colors.green[600]!]
+                    : [Colors.red[400]!, Colors.red[600]!],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.red.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.workspace_premium, color: Colors.white, size: 16),
+                SizedBox(width: 6),
+                Text(
+                  _role,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ],
             ),
           ),
-
-          Positioned(
-            top: 30,
-            left: 100,
-            child: Text(
-              _currentUsername, // Hiển thị Username từ API
+          const SizedBox(height: 12),
+          Text(
+            _currentUsername,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: _textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _isEditing
+              ? Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextField(
+              controller: _fullNameController,
+              textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: _textColor,
-                decoration: TextDecoration.underline,
+                color: _textPrimary,
               ),
-            ),
-          ),
-
-          Positioned(
-            top: 0,
-            right: 0,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.9),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.red, width: 2),
-              ),
-              child: const Text(
-                "ADMIN",
-                style: TextStyle(
-                  color: Colors.red,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
+              decoration: InputDecoration(
+                hintText: "Fullname",
+                hintStyle: TextStyle(color: Colors.grey[400]),
+                enabledBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: _primaryColor.withOpacity(0.3)),
+                ),
+                focusedBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: _primaryColor, width: 2),
                 ),
               ),
             ),
-          ),
-
-          Positioned(
-            bottom: 20,
-            left: 10,
-            right: 10,
-            child: _isEditing
-                ? TextField(
-              controller: _fullNameController,
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: _textColor),
-              decoration: const InputDecoration(
-                hintText: "Fullname",
-                border: UnderlineInputBorder(),
-              ),
-            )
-                : Text(
-              user.fullname.isNotEmpty ? user.fullname : "Fullname",
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: _textColor,
-              ),
+          )
+              : Text(
+            user.fullname.isNotEmpty ? user.fullname : "Fullname",
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: _textPrimary,
             ),
           ),
         ],
@@ -326,7 +425,117 @@ class _AccountInformationState extends State<AccountInformation> {
     );
   }
 
-  Widget _buildInfoRow({
+  Widget _buildStatsCards() {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildStatCard(
+            icon: Icons.bolt_rounded,
+            label: "Experience",
+            value: _xp,
+            gradient: [Colors.purple[400]!, Colors.purple[600]!],
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildStatCard(
+            icon: Icons.diamond_rounded,
+            label: "Gems",
+            value: _gems,
+            gradient: [Colors.blue[400]!, Colors.blue[600]!],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatCard({
+    required IconData icon,
+    required String label,
+    required String value,
+    required List<Color> gradient,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: gradient),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: gradient[0].withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: Colors.white, size: 28),
+          const SizedBox(height: 12),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.9),
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoCard(User currentUser) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          _buildModernInfoRow(
+            icon: Icons.email_rounded,
+            iconColor: Colors.orange[600]!,
+            iconBgColor: Colors.orange[50]!,
+            label: "Email Address",
+            value: currentUser.email,
+            controller: _emailController,
+            isEditable: true,
+          ),
+          _buildDivider(),
+          _buildModernInfoRow(
+            icon: Icons.school_rounded,
+            iconColor: Colors.blue[600]!,
+            iconBgColor: Colors.blue[50]!,
+            label: "Current Level",
+            value: currentUser.level,
+            controller: _levelController,
+            isEditable: false,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModernInfoRow({
     required IconData icon,
     required Color iconColor,
     required Color iconBgColor,
@@ -334,24 +543,21 @@ class _AccountInformationState extends State<AccountInformation> {
     required String value,
     TextEditingController? controller,
     bool isEditable = false,
-    bool isCustomField = false,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 50,
-            height: 50,
+            width: 56,
+            height: 56,
             decoration: BoxDecoration(
               color: iconBgColor,
-              borderRadius: BorderRadius.circular(15),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: Icon(icon, color: iconColor, size: 28),
           ),
-          const SizedBox(width: 15),
-
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -359,44 +565,101 @@ class _AccountInformationState extends State<AccountInformation> {
                 Text(
                   label,
                   style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 14,
+                    color: _textSecondary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 (_isEditing && isEditable && controller != null)
-                    ? SizedBox(
-                  height: 40,
-                  child: TextField(
-                    controller: controller,
-                    style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: _textColor
+                    ? TextField(
+                  controller: controller,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: _textPrimary,
+                  ),
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                    enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: _primaryColor.withOpacity(0.3)),
                     ),
-                    decoration: const InputDecoration(
-                      contentPadding: EdgeInsets.only(bottom: 10),
-                      border: UnderlineInputBorder(),
-                      isDense: true,
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: _primaryColor, width: 2),
                     ),
+                    isDense: true,
                   ),
                 )
                     : Text(
-                  isCustomField ? value : (controller?.text ?? value),
+                  controller?.text ?? value,
                   style: TextStyle(
                     fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: _textColor,
+                    fontWeight: FontWeight.w600,
+                    color: _textPrimary,
                   ),
                 ),
-                if (_isEditing && isEditable && controller != null)
-                  Text("....................................................", style: TextStyle(color: Colors.grey[400], fontSize: 10), maxLines: 1, overflow: TextOverflow.clip,)
-                else if (!isCustomField)
-                  Text("....................................................", style: TextStyle(color: Colors.grey[400], fontSize: 10), maxLines: 1, overflow: TextOverflow.clip,)
               ],
             ),
-          )
+          ),
+          if (_isEditing && isEditable)
+            Icon(Icons.edit_rounded, color: _primaryColor, size: 20),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDivider() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Divider(
+        height: 1,
+        thickness: 1,
+        color: Colors.grey[200],
+      ),
+    );
+  }
+
+  Widget _buildSaveButton() {
+    return Container(
+      width: double.infinity,
+      height: 56,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [_primaryColor, _accentColor],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryColor.withOpacity(0.4),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _updateProfile,
+          borderRadius: BorderRadius.circular(16),
+          child: Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 24),
+                const SizedBox(width: 8),
+                Text(
+                  "Save Changes",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

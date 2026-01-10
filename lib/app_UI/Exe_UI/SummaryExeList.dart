@@ -1,6 +1,5 @@
-import 'package:beelingual/model/model_exercise.dart';
+import 'package:beelingual_app/model/model_exercise.dart';
 import 'package:flutter/material.dart';
-
 
 class ResultPage extends StatelessWidget {
   final List<Exercises> exercises;
@@ -12,9 +11,7 @@ class ResultPage extends StatelessWidget {
   Widget build(BuildContext context) {
     int correct = exercises.where((e) {
       String? u = userAnswers[e.id];
-      return u != null &&
-          u.trim().toLowerCase() == e.correctAnswer.trim().toLowerCase();
-    }).length;
+      return u != null && u.trim().toLowerCase() == e.correctAnswer.trim().toLowerCase();}).length;
 
     return Scaffold(
       appBar: AppBar(
@@ -32,10 +29,7 @@ class ResultPage extends StatelessWidget {
           const SizedBox(height: 20),
           ...exercises.map((e) {
             String? ua = userAnswers[e.id];
-            bool ok = ua != null &&
-                ua.trim().toLowerCase() ==
-                    e.correctAnswer.trim().toLowerCase();
-
+            bool ok = ua != null && ua.trim().toLowerCase() == e.correctAnswer.trim().toLowerCase();
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
               child: ListTile(

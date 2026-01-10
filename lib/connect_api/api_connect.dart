@@ -1,17 +1,16 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:beelingual/app_UI/account/logIn.dart';
-import 'package:beelingual/component/profileProvider.dart';
-import 'package:beelingual/component/vocabularyProvider.dart';
-import 'package:beelingual/model/model_Topic.dart';
-import 'package:beelingual/model/model_Vocab.dart';
-import 'package:beelingual/model/useVocabulary.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_auth_ui/supabase_auth_ui.dart';
-
+import '../app_UI/account/logIn.dart';
+import '../component/profileProvider.dart';
+import '../component/vocabularyProvider.dart';
+import '../model/model_Topic.dart';
+import '../model/model_Vocab.dart';
+import '../model/useVocabulary.dart';
 import 'url.dart';
 
 class SessionManager {
@@ -19,7 +18,6 @@ class SessionManager {
   factory SessionManager() => _instance;
   SessionManager._internal();
 
-  // --- 1. XỬ LÝ ĐĂNG NHẬP ---
   Future<Map<String, dynamic>?> login({
     required String username,
     required String password,
@@ -77,6 +75,7 @@ class SessionManager {
     required String fullname,
     required String password,
     required String role,
+    required String level
   }) async {
     final url = Uri.parse('$urlAPI/api/register');
     try {
@@ -89,6 +88,7 @@ class SessionManager {
           'fullname': fullname,
           'password': password,
           'role': role,
+          'level': level
         }),
       );
 
@@ -105,7 +105,6 @@ class SessionManager {
     }
   }
 
-  // Thay dòng cũ bằng dòng này:
   SupabaseClient get supabase => Supabase.instance.client;
   Future<AuthResponse> signUpSupabase({
     required String email,
@@ -120,13 +119,11 @@ class SessionManager {
   }
 
 
-  // --- 2. LƯU TOKEN ---
   Future<void> saveSession({
     required String accessToken,
     required String refreshToken,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    // Lưu thống nhất tên là 'accessToken'
     await prefs.setString('accessToken', accessToken);
     if (refreshToken.isNotEmpty) {
       await prefs.setString('refreshToken', refreshToken);
@@ -134,21 +131,18 @@ class SessionManager {
     print("Đã lưu Session mới: $accessToken");
   }
 
-  // --- 3. LẤY TOKEN (TOKEN GETTER) ---
   Future<String?> getAccessToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('accessToken');
   }
 
-  // --- 4. REFRESH TOKEN (Tự động gia hạn) ---
   Future<bool> refreshAccessToken() async {
     final prefs = await SharedPreferences.getInstance();
     final refreshToken = prefs.getString('refreshToken');
 
-    // Nếu không có refreshToken thì chịu, phải đăng nhập lại
     if (refreshToken == null || refreshToken.isEmpty) return false;
 
-    final url = Uri.parse('$urlAPI/api/refresh-token'); // Check lại endpoint server của bạn
+    final url = Uri.parse('$urlAPI/api/refresh-token');
     try {
       print("Đang thử Refresh Token...");
       final res = await http.post(
@@ -173,26 +167,25 @@ class SessionManager {
     return false;
   }
 
-  // --- 5. ĐĂNG XUẤT ---
-  // Trong SessionManager -> logout
   Future<void> logout(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
 
     if (context.mounted) {
-      // Dùng pushAndRemoveUntil để xóa hết các màn hình trước đó (bao gồm bottom nav)
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const PageLogIn()), // Chuyển về trang Login full màn hình
-            (Route<dynamic> route) => false, // false nghĩa là xóa hết lịch sử cũ
+        MaterialPageRoute(builder: (_) => const PageLogIn()),
+            (Route<dynamic> route) => false,
       );
     }
   }
+
   Future<bool> isLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
     final accessToken = prefs.getString('accessToken');
     final refreshToken = prefs.getString('refreshToken');
     return accessToken != null && refreshToken != null;
   }
+
   Future<void> checkLoginStatus(BuildContext context) async {
     final loggedIn = await isLoggedIn();
     if (!loggedIn) {
@@ -324,7 +317,7 @@ Future<Map<String, dynamic>> fetchTopicsPaginated({
 }) async {
   final url = Uri.parse('$urlAPI/api/topics?page=$page&limit=$limit');
   final session = SessionManager();
-  
+
   try {
     String? token = await session.getAccessToken();
 
@@ -363,11 +356,11 @@ Future<Map<String, dynamic>> fetchTopicsPaginated({
     // Xử lý kết quả (200 OK)
     if (res.statusCode == 200) {
       final Map<String, dynamic> decoded = json.decode(res.body);
-      
+
       // API trả về: { total, page, limit, totalPages, data: [...] }
       final List<dynamic> topicsJson = decoded['data'] ?? [];
       final List<Topic> topics = topicsJson.map((e) => Topic.fromJson(e)).toList();
-      
+
       return {
         'total': decoded['total'] ?? 0,
         'page': decoded['page'] ?? page,
@@ -573,7 +566,6 @@ Future<bool> updateUserInfo({
   required String level,
   required BuildContext context,
 }) async {
-
   final url = Uri.parse('$urlAPI/api/profile');
   final session = SessionManager();
 
@@ -617,9 +609,8 @@ Future<bool> updateUserInfo({
     print("Lỗi Exception khi cập nhật: $e");
     return false;
   }
-
-
 }
+
 Future<Map<String, dynamic>> changePasswordAPI(String currentPassword, String newPassword, BuildContext context) async {
   final url = Uri.parse('$urlAPI/api/change-password');
   final session = SessionManager();

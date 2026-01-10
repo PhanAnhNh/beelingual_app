@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:beelingual/component/vocabularyProvider.dart';
 import 'package:provider/provider.dart';
+import '../component/vocabularyProvider.dart';
 import '../connect_api/api_connect.dart';
 import '../model/useVocabulary.dart';
 

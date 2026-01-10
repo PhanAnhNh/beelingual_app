@@ -1,4 +1,5 @@
-import 'package:beelingual/controller/translateController.dart';
+
+import 'package:beelingual_app/controller/translateController.dart';
 import 'package:flutter/material.dart';
 import "package:provider/provider.dart";
 
@@ -65,6 +66,7 @@ class TranslatePageUI extends StatelessWidget {
                     // From Language
                     Expanded(
                       child: DropdownButtonFormField<String>(
+                        menuMaxHeight: 300,
                         isExpanded: true,
                         value: controller.fromLang,
                         decoration: InputDecoration(
@@ -117,8 +119,8 @@ class TranslatePageUI extends StatelessWidget {
                           icon: const Icon(Icons.swap_horiz, size: 28),
                           color: Colors.black87,
                           onPressed: controller.swapLanguages,
-                          padding: EdgeInsets.zero, // ✅ giảm padding
-                          constraints: const BoxConstraints(), // ✅ tránh chiếm chỗ thừa
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
                         ),
                       ),
                     ),
@@ -126,7 +128,8 @@ class TranslatePageUI extends StatelessWidget {
                     // To Language
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        isExpanded: true, // ✅ tránh overflow
+                        menuMaxHeight: 300,
+                        isExpanded: true,
                         value: controller.toLang,
                         decoration: InputDecoration(
                           border: OutlineInputBorder(

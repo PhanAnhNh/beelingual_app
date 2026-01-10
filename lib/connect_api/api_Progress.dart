@@ -1,10 +1,10 @@
 import 'dart:convert';
-import 'package:beelingual/component/progressProvider.dart';
 import 'package:http/http.dart' as http;
-import 'package:beelingual/connect_api/api_connect.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 
+import '../component/progressProvider.dart';
+import 'api_connect.dart';
 import 'url.dart';
 
 Future<Map<String, dynamic>?> fetchUserProgress(BuildContext context) async {

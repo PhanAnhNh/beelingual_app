@@ -1,4 +1,4 @@
-import 'package:beelingual/model/exercisesGrm.dart';
+import 'package:beelingual_app/model/exercisesGrm.dart';
 import 'package:flutter/material.dart';
 
 class ResultGrmPage extends StatelessWidget {
